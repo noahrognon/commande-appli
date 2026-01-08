@@ -1,0 +1,8 @@
+---
+import { clearAdminSessionCookie } from "../../lib/adminAuth";
+
+export const prerender = false;
+
+clearAdminSessionCookie(Astro);
+return Astro.redirect("/admin/login");
+---

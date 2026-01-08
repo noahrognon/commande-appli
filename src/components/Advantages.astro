@@ -1,0 +1,45 @@
+---
+const advantages = [
+	{
+		title: "Rapidité",
+		desc: "Livraison optimisée"
+	},
+	{
+		title: "Remises auto",
+		desc: "Jusqu'à -10%"
+	},
+	{
+		title: "Paiement simple",
+		desc: "Virement ou liquide"
+	},
+	{
+		title: "Zéro rupture",
+		desc: "Stock garanti"
+	}
+];
+---
+
+<section class="bg-white px-4 py-12 sm:px-6 lg:px-8">
+	<div class="mx-auto flex max-w-4xl flex-col gap-6">
+		<header class="text-center space-y-2">
+			<h2 class="text-2xl font-semibold bg-gradient-to-r from-[#3d7fff] via-[#9d55ff] to-[#d94bff] bg-clip-text text-transparent">
+				Vos avantages
+			</h2>
+			<p class="text-sm text-slate-600 sm:text-base">Une expérience optimisée pour vous</p>
+		</header>
+
+		<div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+			{advantages.map((item) => (
+				<div class="rounded-3xl bg-gradient-to-br from-[#4c9dff]/35 via-[#7f63ff]/30 to-[#f087ff]/35 p-[1px] shadow-[0_18px_45px_-20px_rgba(73,70,255,0.55)]">
+					<div class="flex h-full flex-col items-center justify-center gap-3 rounded-3xl bg-white/70 px-6 py-8 text-center backdrop-blur">
+						<div class="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#6ea6ff]/60 bg-white/80 text-sm font-semibold text-[#2c7bff] shadow-sm">
+							<span>+</span>
+						</div>
+						<h3 class="text-lg font-semibold text-slate-900">{item.title}</h3>
+						<p class="text-sm text-slate-600 sm:text-base">{item.desc}</p>
+					</div>
+				</div>
+			))}
+		</div>
+	</div>
+</section>

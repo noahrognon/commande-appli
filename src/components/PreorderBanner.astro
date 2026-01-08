@@ -1,0 +1,135 @@
+---
+import { supabase } from "../lib/supabaseClient";
+
+const { data, error } = await supabase
+	.from("preorders")
+	.select("id, name, end_date, status")
+	.eq("status", "open")
+	.limit(1)
+	.maybeSingle();
+
+const preorder = data ?? null;
+const endDateStr = preorder?.end_date ? String(preorder.end_date) : "";
+---
+
+<section
+	class="rounded-[24px] bg-white/85 p-4 shadow-lg ring-1 ring-slate-100 backdrop-blur"
+	data-preorder-root
+>
+	{preorder ? (
+		<div class="space-y-4">
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-3">
+					<span class="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-[#ff7430] via-[#ff4f64] to-[#ff2e9f] text-white shadow-md">
+						<svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6v6l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+						</svg>
+					</span>
+					<div>
+						<p class="text-sm font-semibold text-slate-900">Précommande ouverte</p>
+						<p class="text-xs text-slate-500">Ne manquez pas !</p>
+					</div>
+				</div>
+				<a href="/precommande" class="text-sm font-semibold text-[#4b63ff] hover:text-[#2d7dff]">
+					&gt;
+				</a>
+			</div>
+
+			<div
+				class="rounded-2xl bg-gradient-to-r from-[#2d7dff] via-[#7d4bff] to-[#d74bff] p-4 text-white shadow-[0_12px_35px_-18px_rgba(73,70,255,0.6)]"
+				data-preorder-timer
+				data-end-date={endDateStr}
+			>
+				<div class="flex items-center gap-2 text-sm text-white/85">
+					<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6" d="M12 6v6l3 3m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+					</svg>
+					<span class="text-xs uppercase tracking-wide">Temps restant</span>
+				</div>
+				<div class="mt-2 flex items-end gap-2 text-center">
+					<div class="flex items-baseline gap-1">
+						<span class="text-2xl font-semibold" data-hours>--</span>
+						<span class="text-xs text-white/80">h</span>
+					</div>
+					<span class="text-2xl font-semibold">:</span>
+					<div class="flex items-baseline gap-1">
+						<span class="text-2xl font-semibold" data-minutes>--</span>
+						<span class="text-xs text-white/80">min</span>
+					</div>
+					<span class="text-2xl font-semibold">:</span>
+					<div class="flex items-baseline gap-1">
+						<span class="text-2xl font-semibold" data-seconds>--</span>
+						<span class="text-xs text-white/80">s</span>
+					</div>
+				</div>
+				<p class="mt-2 text-xs text-white/80" data-countdown-label>
+					{preorder.name}
+				</p>
+			</div>
+		</div>
+	) : (
+		<div class="flex items-center justify-between rounded-2xl border border-dashed border-slate-200 bg-white/70 px-4 py-3">
+			<div>
+				<p class="text-sm font-semibold text-slate-900">Aucune précommande en cours</p>
+				<p class="text-xs text-slate-500">Nous vous préviendrons dès la prochaine ouverture.</p>
+			</div>
+		</div>
+	)}
+{preorder && (
+	<script type="module">
+		(() => {
+			const timerEl = document.querySelector("[data-preorder-timer]");
+			const hoursEl = timerEl?.querySelector("[data-hours]");
+			const minutesEl = timerEl?.querySelector("[data-minutes]");
+			const secondsEl = timerEl?.querySelector("[data-seconds]");
+			const labelEl = timerEl?.querySelector("[data-countdown-label]");
+			if (!timerEl || !hoursEl || !minutesEl || !secondsEl) return;
+
+			const endDateAttr = timerEl.getAttribute("data-end-date") || "";
+			let normalized = endDateAttr.trim();
+			if (normalized && !normalized.includes("T") && normalized.includes(" ")) {
+				normalized = normalized.replace(" ", "T");
+			}
+			if (normalized.endsWith("+00")) {
+				normalized = normalized.replace("+00", "+00:00");
+			}
+			const endDate = normalized ? Date.parse(normalized) : NaN;
+			if (!Number.isFinite(endDate)) {
+				hoursEl.textContent = "--";
+				minutesEl.textContent = "--";
+				secondsEl.textContent = "--";
+				if (labelEl) labelEl.textContent = "Date invalide";
+				return;
+			}
+
+			const tick = () => {
+				const now = Date.now();
+				const remaining = endDate - now;
+				if (remaining <= 0) {
+					hoursEl.textContent = "00";
+					minutesEl.textContent = "00";
+					secondsEl.textContent = "00";
+					if (labelEl) labelEl.textContent = "Précommande terminée";
+					return false;
+				}
+
+				const totalSeconds = Math.floor(remaining / 1000);
+				const h = Math.floor(totalSeconds / 3600);
+				const m = Math.floor((totalSeconds % 3600) / 60);
+				const s = totalSeconds % 60;
+
+				hoursEl.textContent = String(h).padStart(2, "0");
+				minutesEl.textContent = String(m).padStart(2, "0");
+				secondsEl.textContent = String(s).padStart(2, "0");
+				return true;
+			};
+
+			if (tick()) {
+				const interval = setInterval(() => {
+					if (!tick()) clearInterval(interval);
+				}, 1000);
+			}
+		})();
+	</script>
+)}
+</section>

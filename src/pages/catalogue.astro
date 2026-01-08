@@ -1,0 +1,89 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { supabase } from "../lib/supabaseClient";
+
+export const prerender = false;
+
+const { data, error } = await supabase
+	.from("flavors")
+	.select("id, name, description, image_url, is_active")
+	.eq("is_active", true)
+	.order("name", { ascending: true });
+
+const flavors = data ?? [];
+---
+
+<Layout>
+	<main class="min-h-screen bg-gradient-to-b from-white via-[#f1f4ff] to-[#f5e7ff] px-4 py-10 sm:px-6 lg:px-8">
+		<div class="mx-auto flex max-w-6xl flex-col gap-8">
+			<header class="space-y-2 text-center sm:text-left">
+				<p class="text-sm font-semibold uppercase tracking-wide text-[#4b63ff]">Catalogue</p>
+				<h1 class="text-3xl font-semibold text-slate-900 sm:text-4xl">Nos goûts disponibles</h1>
+				<p class="text-sm text-slate-600 sm:text-base">
+					Parcourez les saveurs actives et lancez votre prochaine précommande en quelques clics.
+				</p>
+				<div class="mt-4 flex flex-wrap justify-center gap-3 sm:justify-start">
+					<a
+						href="/precommande"
+						class="inline-flex items-center rounded-xl bg-gradient-to-r from-[#2d7dff] via-[#7d4bff] to-[#d74bff] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_12px_35px_-18px_rgba(73,70,255,0.6)] transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+					>
+						Passer une précommande
+					</a>
+					<a
+						href="/register"
+						class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+					>
+						Créer un compte
+					</a>
+				</div>
+			</header>
+
+			{error && (
+				<p class="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+					Une erreur est survenue lors du chargement du catalogue. {error.message}
+				</p>
+			)}
+
+			<section class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+				{flavors.length === 0 && (
+					<div class="col-span-full rounded-2xl border border-dashed border-slate-200 bg-white/80 px-4 py-6 text-center text-sm text-slate-600">
+						Aucun goût actif pour le moment.
+					</div>
+				)}
+
+				{flavors.map((flavor) => (
+					<article class="group relative overflow-hidden rounded-2xl bg-white/85 p-4 shadow-lg ring-1 ring-slate-100 backdrop-blur transition hover:-translate-y-1 hover:shadow-xl">
+						<div class="relative overflow-hidden rounded-xl bg-white aspect-[4/3] p-2">
+							<img
+								src={flavor.image_url || "/placeholder.jpg"}
+								alt={flavor.name}
+								class="h-full w-full object-contain transition duration-500"
+								loading="lazy"
+							/>
+						</div>
+						<div class="mt-3 space-y-2">
+							<h2 class="text-lg font-semibold text-slate-900">{flavor.name}</h2>
+							<p class="text-sm text-slate-600 line-clamp-2">
+								{flavor.description || "Goût disponible dans la prochaine précommande."}
+							</p>
+							<div class="flex gap-3">
+								<a
+									href="/precommande"
+									class="inline-flex items-center rounded-lg bg-gradient-to-r from-[#2d7dff] to-[#7d4bff] px-3 py-2 text-xs font-semibold text-white shadow-[0_8px_20px_-12px_rgba(73,70,255,0.6)] transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+								>
+									Commander ce goût
+								</a>
+								<a
+									href="/dashboard"
+									class="inline-flex items-center rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+								>
+									Voir mes commandes
+								</a>
+							</div>
+						</div>
+					</article>
+				))}
+			</section>
+		</div>
+	</main>
+</Layout>

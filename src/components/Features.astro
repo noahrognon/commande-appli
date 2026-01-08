@@ -1,0 +1,34 @@
+---
+const features = [
+	"Timer de précommande en temps réel",
+	"Catalogue complet des saveurs",
+	"Programme VIP exclusif",
+	"Système de parrainage",
+	"Dashboard personnalisé"
+];
+---
+
+<section class="relative overflow-hidden bg-white px-4 py-12 sm:px-6 lg:px-8">
+	<div class="absolute inset-x-0 top-6 mx-auto h-48 max-w-5xl rounded-[32px] bg-gradient-to-r from-[#4c9dff]/20 via-[#a26bff]/18 to-[#ff7dd1]/18 blur-3xl"></div>
+	<div class="relative mx-auto flex max-w-5xl flex-col gap-6 rounded-[28px] border border-white/60 bg-white/70 p-6 shadow-[0_18px_55px_-28px_rgba(73,70,255,0.4)] backdrop-blur sm:p-8">
+		<div class="space-y-2 text-center sm:text-left">
+			<h2 class="text-2xl font-semibold bg-gradient-to-r from-[#3d7fff] via-[#9d55ff] to-[#d94bff] bg-clip-text text-transparent sm:text-3xl">
+				Toutes les fonctionnalités dont vous avez besoin
+			</h2>
+			<p class="text-sm text-slate-600 sm:text-base">
+				Une plateforme complète pour gérer vos précommandes en toute simplicité.
+			</p>
+		</div>
+
+		<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+			{features.map((feature) => (
+				<div class="group flex items-start gap-3 rounded-2xl border border-slate-100 bg-gradient-to-r from-white to-white/60 px-4 py-3 shadow-[0_10px_30px_-18px_rgba(67,56,202,0.5)] transition hover:-translate-y-0.5 hover:shadow-[0_15px_40px_-18px_rgba(67,56,202,0.45)]">
+					<div class="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-[#59e3a7] via-[#43c2f5] to-[#5f7bff] text-white shadow-md">
+						<span aria-hidden="true">✓</span>
+					</div>
+					<p class="text-sm font-medium text-slate-800 sm:text-base">{feature}</p>
+				</div>
+			))}
+		</div>
+	</div>
+</section>

@@ -1,0 +1,1077 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { supabaseAdmin } from "../../lib/supabaseAdmin";
+import { requireAdmin } from "../../lib/adminAuth";
+
+export const prerender = false;
+
+const admin = await requireAdmin(Astro);
+if (!admin) {
+	return Astro.redirect("/admin/login");
+}
+
+if (!supabaseAdmin) {
+	throw new Error("Missing admin client.");
+}
+
+const { data: ordersData } = await supabaseAdmin
+	.from("orders")
+	.select("id, order_number, user_id, preorder_id, cartons, total, payment_method, status, created_at")
+	.order("created_at", { ascending: false });
+
+const ordersRaw = ordersData ?? [];
+
+const { data: orderFlavorsData } =
+	ordersRaw.length > 0
+		? await supabaseAdmin
+				.from("order_flavors")
+				.select("order_id, flavor_id, quantity")
+				.in(
+					"order_id",
+					ordersRaw.map((order) => order.id)
+				)
+		: { data: [] };
+
+const { data: flavorsData } = await supabaseAdmin.from("flavors").select("id, name");
+const { data: preordersData } = await supabaseAdmin
+	.from("preorders")
+	.select("id, name, start_date, end_date, status")
+	.order("end_date", { ascending: false });
+
+const { data: usersData } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+const users = usersData?.users ?? [];
+
+const toNumber = (value: unknown) => {
+	const parsed = Number(value ?? 0);
+	return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const formatDate = (value: string | null | undefined) => {
+	if (!value) return "--";
+	const date = new Date(value);
+	const day = String(date.getDate()).padStart(2, "0");
+	const month = String(date.getMonth() + 1).padStart(2, "0");
+	const year = date.getFullYear();
+	return `${day}/${month}/${year}`;
+};
+
+const userMap = new Map(
+	users.map((user) => [
+		user.id,
+		{
+			email: user.email || "",
+			firstName: (user.user_metadata?.first_name as string) || "",
+			lastName: (user.user_metadata?.last_name as string) || ""
+		}
+	])
+);
+
+const orders = ordersRaw.map((order) => ({
+	...order,
+	cartons: toNumber(order.cartons),
+	total: toNumber(order.total),
+	createdAt: new Date(order.created_at)
+}));
+
+const orderDateById = new Map(orders.map((order) => [order.id, order.createdAt]));
+
+const orderFlavors = orderFlavorsData ?? [];
+const flavorMap = new Map((flavorsData ?? []).map((flavor) => [flavor.id, flavor.name]));
+
+const flavorsByOrder = new Map<string, { id: string; name: string; quantity: number }[]>();
+const flavorCountByOrder = new Map<string, number>();
+
+for (const item of orderFlavors) {
+	const list = flavorsByOrder.get(item.order_id) ?? [];
+	const name = flavorMap.get(item.flavor_id) ?? "Inconnu";
+	const quantity = toNumber(item.quantity);
+	list.push({ id: item.flavor_id, name, quantity });
+	flavorsByOrder.set(item.order_id, list);
+	flavorCountByOrder.set(item.order_id, (flavorCountByOrder.get(item.order_id) ?? 0) + quantity);
+}
+
+const now = new Date();
+const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+const weekStart = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
+weekStart.setHours(0, 0, 0, 0);
+const prevWeekStart = new Date(weekStart.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+const ordersThisMonth = orders.filter((order) => order.createdAt >= monthStart);
+const ordersThisWeek = orders.filter((order) => order.createdAt >= weekStart);
+
+const revenueMonth = ordersThisMonth.reduce((sum, order) => sum + order.total, 0);
+const revenueWeek = ordersThisWeek.reduce((sum, order) => sum + order.total, 0);
+const cartonsMonth = ordersThisMonth.reduce((sum, order) => sum + order.cartons, 0);
+const marginMonth = cartonsMonth * 31;
+const marginPercent = revenueMonth > 0 ? (marginMonth / revenueMonth) * 100 : 0;
+
+const activeClients = new Set(ordersThisMonth.map((order) => order.user_id)).size;
+
+const dayNames = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
+const dailyStats = Array.from({ length: 7 }, (_, index) => {
+	const date = new Date(now.getTime() - (6 - index) * 24 * 60 * 60 * 1000);
+	const key = date.toISOString().slice(0, 10);
+	const total = orders.reduce((sum, order) => {
+		const orderKey = order.createdAt.toISOString().slice(0, 10);
+		return orderKey === key ? sum + order.total : sum;
+	}, 0);
+	return {
+		label: dayNames[date.getDay()],
+		total
+	};
+});
+
+const maxDailyTotal = Math.max(1, ...dailyStats.map((stat) => stat.total));
+
+const flavorTotalsMap = new Map<string, number>();
+for (const item of orderFlavors) {
+	flavorTotalsMap.set(item.flavor_id, (flavorTotalsMap.get(item.flavor_id) ?? 0) + toNumber(item.quantity));
+}
+
+const flavorStats = (flavorsData ?? [])
+	.map((flavor) => ({
+		id: flavor.id,
+		name: flavor.name,
+		total: flavorTotalsMap.get(flavor.id) ?? 0
+	}))
+	.filter((flavor) => flavor.total > 0)
+	.sort((a, b) => b.total - a.total);
+
+const flavorColors = ["#4f6fff", "#7a4bff", "#b94bff", "#ff7ac6", "#ffb84b"];
+const totalFlavorCount = flavorStats.reduce((sum, item) => sum + item.total, 0);
+let donutAcc = 0;
+const donutSegments = flavorStats.slice(0, 5).map((item, index) => {
+	const percent = totalFlavorCount > 0 ? (item.total / totalFlavorCount) * 100 : 0;
+	const start = donutAcc;
+	const end = donutAcc + percent;
+	donutAcc = end;
+	return {
+		...item,
+		percent,
+		color: flavorColors[index] || "#94a3b8",
+		gradient: `${flavorColors[index] || "#94a3b8"} ${start.toFixed(2)}% ${end.toFixed(2)}%`
+	};
+});
+
+const donutStyle =
+	donutSegments.length > 0
+		? `conic-gradient(${donutSegments.map((segment) => segment.gradient).join(", ")})`
+		: "conic-gradient(#e2e8f0 0 100%)";
+
+const weekFlavorTotals = new Map<string, number>();
+const prevWeekFlavorTotals = new Map<string, number>();
+
+for (const item of orderFlavors) {
+	const date = orderDateById.get(item.order_id);
+	if (!date) continue;
+	const quantity = toNumber(item.quantity);
+	if (date >= weekStart) {
+		weekFlavorTotals.set(item.flavor_id, (weekFlavorTotals.get(item.flavor_id) ?? 0) + quantity);
+	} else if (date >= prevWeekStart && date < weekStart) {
+		prevWeekFlavorTotals.set(
+			item.flavor_id,
+			(prevWeekFlavorTotals.get(item.flavor_id) ?? 0) + quantity
+		);
+	}
+}
+
+const openPreorder = (preordersData ?? []).find((preorder) => preorder.status === "open") ?? null;
+const openOrderIds = new Set(
+	orders.filter((order) => order.preorder_id === openPreorder?.id).map((order) => order.id)
+);
+const openOrders = orders.filter((order) => openOrderIds.has(order.id));
+const openClients = new Set(openOrders.map((order) => order.user_id)).size;
+const openCartons = openOrders.reduce((sum, order) => sum + order.cartons, 0);
+const openEndDate = openPreorder?.end_date ? new Date(openPreorder.end_date) : null;
+const openRemainingMs = openEndDate ? openEndDate.getTime() - now.getTime() : 0;
+const openRemainingLabel =
+	openRemainingMs > 0
+		? `${Math.floor(openRemainingMs / 3600000)
+				.toString()
+				.padStart(2, "0")}h ${Math.floor((openRemainingMs % 3600000) / 60000)
+				.toString()
+				.padStart(2, "0")}m`
+		: "Terminee";
+
+const openFlavorTotals = new Map<string, { quantity: number; orders: Set<string> }>();
+for (const item of orderFlavors) {
+	if (!openOrderIds.has(item.order_id)) continue;
+	const entry = openFlavorTotals.get(item.flavor_id) ?? { quantity: 0, orders: new Set() };
+	entry.quantity += toNumber(item.quantity);
+	entry.orders.add(item.order_id);
+	openFlavorTotals.set(item.flavor_id, entry);
+}
+
+const openFlavorStats = (flavorsData ?? [])
+	.map((flavor) => {
+		const entry = openFlavorTotals.get(flavor.id);
+		return {
+			id: flavor.id,
+			name: flavor.name,
+			quantity: entry?.quantity ?? 0,
+			orders: entry?.orders.size ?? 0
+		};
+	})
+	.filter((item) => item.quantity > 0)
+	.sort((a, b) => b.quantity - a.quantity);
+
+const formatNumber = (value: number) => Math.round(value).toString();
+---
+
+<Layout>
+	<main class="relative min-h-screen bg-gradient-to-b from-white via-[#f2f4ff] to-[#f6ecff] px-4 py-10 sm:px-6 lg:px-8">
+		<div class="pointer-events-none absolute -top-32 left-6 h-64 w-64 rounded-full bg-[#7a7dff]/30 blur-[120px]"></div>
+		<div class="pointer-events-none absolute -bottom-32 right-8 h-72 w-72 rounded-full bg-[#f58cff]/30 blur-[140px]"></div>
+
+		<div class="mx-auto flex max-w-6xl flex-col gap-8">
+			<header class="relative z-10 flex flex-col gap-2 fade-in">
+				<p class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Console admin</p>
+				<h1 class="text-3xl font-semibold text-slate-900 sm:text-4xl admin-title">Centre de pilotage</h1>
+				<p class="text-sm text-slate-600">
+					Suivi des commandes, des precommandes et des performances en temps reel.
+				</p>
+			</header>
+
+			<nav class="relative z-10 flex flex-wrap gap-2 rounded-3xl bg-white/80 p-2 shadow-lg shadow-slate-200/60 ring-1 ring-white/50 backdrop-blur fade-in">
+				<button
+					class="tab-button tab-active"
+					data-tab-target="dashboard"
+					type="button"
+				>
+					Tableau de bord
+				</button>
+				<button class="tab-button" data-tab-target="orders" type="button">Commandes</button>
+				<button class="tab-button" data-tab-target="preorders" type="button">Precommandes</button>
+				<a
+					href="/admin/logout"
+					class="ml-auto inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+				>
+					Sortie
+				</a>
+			</nav>
+
+			<section data-tab-panel="dashboard" class="relative z-10 flex flex-col gap-8">
+				<div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+					<div class="stat-card">
+						<div class="flex items-center justify-between">
+							<p class="stat-label text-emerald-600">Revenus du mois</p>
+							<span class="flex h-8 w-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+								<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M4 10h12"></path>
+									<path d="M4 14h9"></path>
+									<path d="M19 6a8 8 0 1 0 0 12"></path>
+								</svg>
+							</span>
+						</div>
+						<p class="stat-value">{formatNumber(revenueMonth)} EUR</p>
+						<p class="stat-sub">+{formatNumber(revenueWeek)} EUR cette semaine</p>
+					</div>
+					<div class="stat-card">
+						<div class="flex items-center justify-between">
+							<p class="stat-label text-blue-600">Marge totale</p>
+							<span class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+								<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M3 17l6-6 4 4 8-8"></path>
+									<path d="M14 7h7v7"></path>
+								</svg>
+							</span>
+						</div>
+						<p class="stat-value">{formatNumber(marginMonth)} EUR</p>
+						<p class="stat-sub">{marginPercent.toFixed(1)}% de marge</p>
+					</div>
+					<div class="stat-card">
+						<div class="flex items-center justify-between">
+							<p class="stat-label text-violet-600">Cartons vendus</p>
+							<span class="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-600">
+								<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M21 8v8l-9 5-9-5V8l9-5 9 5z"></path>
+									<path d="M12 3v18"></path>
+									<path d="M3 8l9 5 9-5"></path>
+								</svg>
+							</span>
+						</div>
+						<p class="stat-value">{formatNumber(cartonsMonth)}</p>
+						<p class="stat-sub">Ce mois-ci</p>
+					</div>
+					<div class="stat-card">
+						<div class="flex items-center justify-between">
+							<p class="stat-label text-amber-600">Clients actifs</p>
+							<span class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+								<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M17 21v-2a4 4 0 0 0-3-3.87"></path>
+									<path d="M7 21v-2a4 4 0 0 1 3-3.87"></path>
+									<circle cx="9" cy="7" r="4"></circle>
+									<circle cx="17" cy="7" r="4"></circle>
+								</svg>
+							</span>
+						</div>
+						<p class="stat-value">{formatNumber(activeClients)}</p>
+						<p class="stat-sub">Ce mois-ci</p>
+					</div>
+				</div>
+
+				<div class="grid gap-6 lg:grid-cols-2">
+					<div class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50">
+						<div class="flex items-center justify-between">
+							<div>
+								<p class="text-sm font-semibold text-slate-800">Ventes de la semaine</p>
+								<p class="text-xs text-slate-500">Chiffre d'affaires journalier</p>
+							</div>
+							<span class="rounded-full bg-[#eef2ff] px-3 py-1 text-xs font-semibold text-[#5a5dff]">
+								7 jours
+							</span>
+						</div>
+						<div class="mt-6 flex h-40 items-end gap-2">
+							{dailyStats.map((stat) => (
+								<div class="flex flex-1 flex-col items-center gap-2">
+									<div
+										class="w-full rounded-full bg-gradient-to-t from-[#4f6fff] via-[#7a4bff] to-[#d24bff] shadow-md shadow-indigo-400/30"
+										style={`height: ${Math.max(8, (stat.total / maxDailyTotal) * 100)}%`}
+									></div>
+									<span class="text-xs text-slate-500">{stat.label}</span>
+								</div>
+							))}
+						</div>
+					</div>
+
+					<div class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50">
+						<div class="flex items-center justify-between">
+							<div>
+								<p class="text-sm font-semibold text-slate-800">Repartition des gouts</p>
+								<p class="text-xs text-slate-500">Top 5 des demandes</p>
+							</div>
+							<span class="rounded-full bg-[#f4edff] px-3 py-1 text-xs font-semibold text-[#9b5cff]">
+								Donut
+							</span>
+						</div>
+						<div class="mt-6 flex items-center gap-6">
+							<div class="relative flex h-36 w-36 items-center justify-center">
+								<div class="h-full w-full rounded-full" style={`background: ${donutStyle};`}></div>
+								<div class="absolute inset-5 rounded-full bg-white"></div>
+								<p class="absolute text-xs font-semibold text-slate-500">
+									{totalFlavorCount} votes
+								</p>
+							</div>
+							<div class="flex flex-1 flex-col gap-2">
+								{donutSegments.map((segment) => (
+									<div class="flex items-center gap-3 text-xs text-slate-600">
+										<span
+											class="h-2.5 w-2.5 rounded-full"
+											style={`background: ${segment.color};`}
+										></span>
+										<span class="flex-1">{segment.name}</span>
+										<span class="text-slate-500">{segment.percent.toFixed(0)}%</span>
+									</div>
+								))}
+								{donutSegments.length === 0 && (
+									<p class="text-xs text-slate-500">Aucune donnee pour le moment.</p>
+								)}
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50">
+					<div class="flex items-center justify-between">
+						<div>
+							<p class="text-sm font-semibold text-slate-800">Top 10 des gouts demandes</p>
+							<p class="text-xs text-slate-500">Popularite et tendance recente</p>
+						</div>
+					</div>
+					<div class="mt-6 space-y-4">
+						{flavorStats.slice(0, 10).map((flavor) => {
+							const weekCount = weekFlavorTotals.get(flavor.id) ?? 0;
+							const prevCount = prevWeekFlavorTotals.get(flavor.id) ?? 0;
+							const trend =
+								prevCount === 0
+									? weekCount > 0
+										? 100
+										: 0
+									: ((weekCount - prevCount) / prevCount) * 100;
+							const trendLabel = `${trend >= 0 ? "+" : ""}${trend.toFixed(0)}%`;
+							const progress = totalFlavorCount > 0 ? (flavor.total / totalFlavorCount) * 100 : 0;
+							return (
+								<div class="flex flex-col gap-2">
+									<div class="flex items-center justify-between text-sm text-slate-700">
+										<span class="font-medium">{flavor.name}</span>
+										<span class={`trend-badge ${trend >= 0 ? "trend-up" : "trend-down"}`}>
+											{trendLabel}
+										</span>
+									</div>
+									<div class="flex items-center gap-3 text-xs text-slate-500">
+										<span>{flavor.total} votes</span>
+										<div class="relative h-2 flex-1 overflow-hidden rounded-full bg-slate-100">
+											<div
+												class="absolute left-0 top-0 h-full rounded-full bg-gradient-to-r from-[#4f6fff] via-[#7a4bff] to-[#d24bff]"
+												style={`width: ${Math.max(6, progress)}%`}
+											></div>
+										</div>
+										<span>{progress.toFixed(0)}%</span>
+									</div>
+								</div>
+							);
+						})}
+						{flavorStats.length === 0 && (
+							<p class="text-sm text-slate-500">Aucune commande pour le moment.</p>
+						)}
+					</div>
+				</div>
+			</section>
+
+			<section data-tab-panel="orders" class="relative z-10 hidden flex-col gap-6">
+				<div class="rounded-3xl bg-white/85 p-5 shadow-lg shadow-slate-200/60 ring-1 ring-white/50">
+					<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+						<div class="flex flex-1 items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+							<svg class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<circle cx="11" cy="11" r="7"></circle>
+								<path d="M20 20l-3.5-3.5"></path>
+							</svg>
+							<input
+								data-order-search
+								type="text"
+								placeholder="Rechercher une commande, un nom ou un email"
+								class="w-full bg-transparent outline-none"
+							/>
+						</div>
+						<div class="flex flex-wrap gap-2">
+							<button class="filter-button filter-active" data-status-filter="all" type="button">
+								Tous
+							</button>
+							<button class="filter-button" data-status-filter="pending" type="button">
+								En attente
+							</button>
+							<button class="filter-button" data-status-filter="confirmed" type="button">
+								Confirmees
+							</button>
+							<button class="filter-button" data-status-filter="delivered" type="button">
+								Livrees
+							</button>
+						</div>
+					</div>
+				</div>
+
+				<div class="space-y-4" data-order-list>
+					{orders.map((order) => {
+						const user = userMap.get(order.user_id) ?? { email: "", firstName: "", lastName: "" };
+						const fullName =
+							[user.firstName, user.lastName].filter(Boolean).join(" ") || "Client";
+						const orderNumber = order.order_number || `CMD-${order.id.slice(0, 8)}`;
+						const statusLabel = {
+							pending: "En attente",
+							confirmed: "Confirmee",
+							delivered: "Livree",
+							cancelled: "Annulee"
+						}[order.status as string] || "En attente";
+						const statusClass = {
+							pending: "badge-warning",
+							confirmed: "badge-info",
+							delivered: "badge-success",
+							cancelled: "badge-error"
+						}[order.status as string] || "badge-warning";
+						const flavorCount = flavorCountByOrder.get(order.id) ?? 0;
+						const orderFlavorsList = flavorsByOrder.get(order.id) ?? [];
+						const searchValue = `${orderNumber} ${fullName} ${user.email}`.toLowerCase();
+						const margin = order.cartons * 31;
+						const marginPercent = order.total > 0 ? (margin / order.total) * 100 : 0;
+						return (
+							<div
+								class="order-card rounded-3xl bg-white/85 p-5 shadow-lg shadow-slate-200/60 ring-1 ring-white/50"
+								data-order-card
+								data-status={order.status}
+								data-search={searchValue}
+							>
+								<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+									<div class="flex items-center gap-4">
+										<div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#eef2ff] text-lg">
+											<svg class="h-5 w-5 text-[#5a5dff]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+												<path d="M21 8v8l-9 5-9-5V8l9-5 9 5z"></path>
+												<path d="M12 3v18"></path>
+												<path d="M3 8l9 5 9-5"></path>
+											</svg>
+										</div>
+										<div>
+											<p class="text-sm font-semibold text-slate-900">{orderNumber}</p>
+											<p class="text-xs text-slate-500">{fullName}</p>
+											<p class="text-xs text-slate-400">{formatDate(order.created_at)}</p>
+										</div>
+									</div>
+									<div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+										<span class={`badge ${statusClass}`}>{statusLabel}</span>
+										<span>{order.cartons} cartons</span>
+										<span>{formatNumber(order.total)} EUR</span>
+										<span>Marge {formatNumber(margin)} EUR</span>
+										<span>{marginPercent.toFixed(1)}%</span>
+									</div>
+									<button
+										type="button"
+										class="toggle-button"
+										data-action="toggle-order"
+										aria-expanded="false"
+									>
+										<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+											<path d="M6 9l6 6 6-6"></path>
+										</svg>
+									</button>
+								</div>
+
+								<div class="mt-4 hidden space-y-4 border-t border-slate-100 pt-4" data-order-details>
+									<div class="grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
+										<div>
+											<p class="text-xs text-slate-400">Email</p>
+											<p>{user.email || "non renseigne"}</p>
+										</div>
+										<div>
+											<p class="text-xs text-slate-400">Mode de paiement</p>
+											<p>{order.payment_method || "--"}</p>
+										</div>
+										<div>
+											<p class="text-xs text-slate-400">Gouts</p>
+											<p>{flavorCount} selections</p>
+										</div>
+										<div>
+											<p class="text-xs text-slate-400">Cout achat</p>
+											<p>{formatNumber(order.cartons * 44)} EUR</p>
+										</div>
+									</div>
+
+									<div class="flex flex-wrap gap-2">
+										{orderFlavorsList.map((flavor) => (
+											<span class="flavor-pill">
+												{flavor.name} x{flavor.quantity}
+											</span>
+										))}
+										{orderFlavorsList.length === 0 && (
+											<span class="text-xs text-slate-500">Aucun gout associe.</span>
+										)}
+									</div>
+
+									<div class="flex flex-wrap gap-3">
+										{order.status === "pending" && (
+											<button
+												class="action-button action-primary"
+												data-action="update-status"
+												data-order-id={order.id}
+												data-next-status="confirmed"
+												type="button"
+											>
+												Confirmer
+											</button>
+										)}
+										{order.status === "confirmed" && (
+											<button
+												class="action-button action-success"
+												data-action="update-status"
+												data-order-id={order.id}
+												data-next-status="delivered"
+												type="button"
+											>
+												Marquer comme livree
+											</button>
+										)}
+										<button
+											class="action-button action-danger"
+											data-action="update-status"
+											data-order-id={order.id}
+											data-next-status="cancelled"
+											type="button"
+										>
+											Annuler
+										</button>
+									</div>
+								</div>
+							</div>
+						);
+					})}
+					{orders.length === 0 && (
+						<div class="rounded-3xl bg-white/85 p-6 text-sm text-slate-500 shadow-lg shadow-slate-200/60 ring-1 ring-white/50">
+							Aucune commande pour le moment.
+						</div>
+					)}
+				</div>
+			</section>
+
+			<section data-tab-panel="preorders" class="relative z-10 hidden flex-col gap-6">
+				<div class="rounded-3xl bg-gradient-to-r from-[#eef2ff] via-white to-[#f9f0ff] p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/60">
+					<div class="flex items-center gap-4">
+						<div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow">
+							<svg class="h-5 w-5 text-[#7a4bff]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+								<circle cx="12" cy="12" r="9"></circle>
+								<path d="M12 7v5l3 3"></path>
+							</svg>
+						</div>
+						<div>
+							<p class="text-sm font-semibold text-slate-900">Gestion des precommandes</p>
+							<p class="text-xs text-slate-600">
+								Suivez le cycle en cours et ajustez la fenetre.
+							</p>
+						</div>
+					</div>
+				</div>
+
+				<div class="grid gap-4 md:grid-cols-3">
+					<div class="metric-card">
+						<p class="metric-label">Precommandes actives</p>
+						<p class="metric-value">{formatNumber(openClients)}</p>
+						<p class="metric-sub">Clients uniques</p>
+					</div>
+					<div class="metric-card">
+						<p class="metric-label">Cartons a commander</p>
+						<p class="metric-value">{formatNumber(openCartons)}</p>
+						<p class="metric-sub">Total actuel</p>
+					</div>
+					<div class="metric-card" data-countdown data-end-date={openEndDate?.toISOString()}>
+						<p class="metric-label">Temps restant</p>
+						<p class="metric-value">{openRemainingLabel}</p>
+						<p class="metric-sub">{openPreorder ? openPreorder.name : "Aucune ouverte"}</p>
+					</div>
+				</div>
+
+				<div class="flex flex-wrap gap-3">
+					<button
+						type="button"
+						class="action-button action-danger"
+						data-action="close-preorder"
+						disabled={!openPreorder}
+					>
+						Cloturer les precommandes
+					</button>
+					<button
+						type="button"
+						class="action-button action-primary"
+						data-action="extend-preorder"
+						disabled={!openPreorder}
+					>
+						Prolonger de 24h
+					</button>
+				</div>
+
+				<div class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50">
+					<div class="flex items-center justify-between">
+						<div>
+							<p class="text-sm font-semibold text-slate-900">Calcul de l'arrivage</p>
+							<p class="text-xs text-slate-500">Repartition des gouts demandes</p>
+						</div>
+					</div>
+					<div class="mt-6 space-y-4">
+						{openFlavorStats.map((item) => {
+							const percent = openOrders.length > 0 ? (item.orders / openOrders.length) * 100 : 0;
+							return (
+								<div class="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+									<p class="text-sm font-semibold text-slate-800">{item.name}</p>
+									<div class="mt-1 flex items-center gap-3 text-xs text-slate-500">
+										<span>{item.quantity} cartons</span>
+										<span>Demande par {percent.toFixed(0)}% des clients</span>
+									</div>
+								</div>
+							);
+						})}
+						{openFlavorStats.length === 0 && (
+							<p class="text-sm text-slate-500">Aucune demande pour cette precommande.</p>
+						)}
+					</div>
+				</div>
+			</section>
+		</div>
+	</main>
+</Layout>
+
+<script>
+	const tabButtons = Array.from(document.querySelectorAll("[data-tab-target]"));
+	const tabPanels = Array.from(document.querySelectorAll("[data-tab-panel]"));
+	const tabButtonClass = "tab-active";
+
+	const activateTab = (target) => {
+		tabButtons.forEach((button) => {
+			const isActive = button.dataset.tabTarget === target;
+			button.classList.toggle(tabButtonClass, isActive);
+		});
+		tabPanels.forEach((panel) => {
+			panel.classList.toggle("hidden", panel.dataset.tabPanel !== target);
+		});
+	};
+
+	tabButtons.forEach((button) => {
+		button.addEventListener("click", () => activateTab(button.dataset.tabTarget));
+	});
+
+	const filterButtons = Array.from(document.querySelectorAll("[data-status-filter]"));
+	const searchInput = document.querySelector("[data-order-search]");
+	const orderCards = Array.from(document.querySelectorAll("[data-order-card]"));
+	let activeStatus = "all";
+
+	const applyFilters = () => {
+		const query = (searchInput?.value || "").trim().toLowerCase();
+		orderCards.forEach((card) => {
+			const status = card.dataset.status || "";
+			const search = card.dataset.search || "";
+			const statusMatch = activeStatus === "all" || status === activeStatus;
+			const queryMatch = !query || search.includes(query);
+			card.classList.toggle("hidden", !(statusMatch && queryMatch));
+		});
+	};
+
+	filterButtons.forEach((button) => {
+		button.addEventListener("click", () => {
+			activeStatus = button.dataset.statusFilter || "all";
+			filterButtons.forEach((btn) => btn.classList.toggle("filter-active", btn === button));
+			applyFilters();
+		});
+	});
+
+	if (searchInput) {
+		searchInput.addEventListener("input", applyFilters);
+	}
+
+	document.addEventListener("click", async (event) => {
+		const target = event.target;
+		if (!(target instanceof HTMLElement)) return;
+
+		const toggleButton = target.closest("[data-action='toggle-order']");
+		if (toggleButton) {
+			const card = toggleButton.closest("[data-order-card]");
+			const details = card?.querySelector("[data-order-details]");
+			if (details) {
+				details.classList.toggle("hidden");
+				toggleButton.classList.toggle("rotate-180");
+			}
+			return;
+		}
+
+		const actionButton = target.closest("[data-action='update-status']");
+		if (actionButton) {
+			const orderId = actionButton.getAttribute("data-order-id");
+			const nextStatus = actionButton.getAttribute("data-next-status");
+			if (!orderId || !nextStatus) return;
+			const originalText = actionButton.textContent || "";
+			actionButton.setAttribute("disabled", "true");
+			actionButton.textContent = "Mise a jour...";
+			try {
+				const response = await fetch("/api/admin/update-order-status", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ order_id: orderId, status: nextStatus })
+				});
+				if (!response.ok) {
+					throw new Error(await response.text());
+				}
+				window.location.reload();
+			} catch (err) {
+				actionButton.removeAttribute("disabled");
+				actionButton.textContent = originalText;
+				console.error(err);
+			}
+			return;
+		}
+
+		const closeButton = target.closest("[data-action='close-preorder']");
+		if (closeButton) {
+			closeButton.setAttribute("disabled", "true");
+			closeButton.textContent = "Cloture...";
+			try {
+				const response = await fetch("/api/admin/close-preorder", { method: "POST" });
+				if (!response.ok) throw new Error(await response.text());
+				window.location.reload();
+			} catch (err) {
+				closeButton.removeAttribute("disabled");
+				closeButton.textContent = "Cloturer les precommandes";
+				console.error(err);
+			}
+			return;
+		}
+
+		const extendButton = target.closest("[data-action='extend-preorder']");
+		if (extendButton) {
+			extendButton.setAttribute("disabled", "true");
+			extendButton.textContent = "Prolongation...";
+			try {
+				const response = await fetch("/api/admin/extend-preorder", { method: "POST" });
+				if (!response.ok) throw new Error(await response.text());
+				window.location.reload();
+			} catch (err) {
+				extendButton.removeAttribute("disabled");
+				extendButton.textContent = "Prolonger de 24h";
+				console.error(err);
+			}
+		}
+	});
+
+	const countdownEl = document.querySelector("[data-countdown]");
+	if (countdownEl) {
+		const endDate = countdownEl.getAttribute("data-end-date");
+		if (endDate) {
+			const endTime = new Date(endDate).getTime();
+			const valueEl = countdownEl.querySelector(".metric-value");
+			const tick = () => {
+				const diff = endTime - Date.now();
+				if (!valueEl) return;
+				if (diff <= 0) {
+					valueEl.textContent = "Terminee";
+					return;
+				}
+				const hours = Math.floor(diff / 3600000);
+				const minutes = Math.floor((diff % 3600000) / 60000);
+				valueEl.textContent = `${String(hours).padStart(2, "0")}h ${String(minutes).padStart(
+					2,
+					"0"
+				)}m`;
+			};
+			tick();
+			setInterval(tick, 1000);
+		}
+	}
+</script>
+
+<style>
+	.tab-button {
+		position: relative;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 999px;
+		padding: 0.65rem 1.4rem;
+		font-size: 0.8rem;
+		font-weight: 600;
+		color: #5b6475;
+		transition: all 0.2s ease;
+	}
+
+	.tab-button:hover {
+		color: #1f2937;
+	}
+
+	.tab-active {
+		background: linear-gradient(120deg, rgba(79, 111, 255, 0.18), rgba(210, 75, 255, 0.18));
+		color: #312e81;
+		box-shadow: 0 10px 25px rgba(99, 102, 241, 0.2);
+		background-size: 200% 200%;
+		animation: tabShimmer 3s ease infinite;
+	}
+
+	.admin-title {
+		background: linear-gradient(120deg, #2d7dff, #7a4bff, #ff7ac6);
+		background-size: 200% 200%;
+		-webkit-background-clip: text;
+		color: transparent;
+		animation: titleShift 6s ease infinite;
+	}
+
+	.fade-in {
+		animation: fadeUp 0.6s ease both;
+	}
+
+	.stat-card {
+		display: flex;
+		flex-direction: column;
+		gap: 0.35rem;
+		border-radius: 1.5rem;
+		background: rgba(255, 255, 255, 0.85);
+		padding: 1.25rem;
+		box-shadow: 0 16px 30px rgba(148, 163, 184, 0.15);
+	}
+
+	.stat-label {
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.2em;
+	}
+
+	.stat-value {
+		font-size: 1.7rem;
+		font-weight: 600;
+		color: #0f172a;
+	}
+
+	.stat-sub {
+		font-size: 0.75rem;
+		color: #64748b;
+	}
+
+	.trend-badge {
+		border-radius: 999px;
+		padding: 0.25rem 0.6rem;
+		font-size: 0.7rem;
+		font-weight: 600;
+	}
+
+	.trend-up {
+		background: rgba(34, 197, 94, 0.12);
+		color: #15803d;
+	}
+
+	.trend-down {
+		background: rgba(239, 68, 68, 0.12);
+		color: #b91c1c;
+	}
+
+	.filter-button {
+		border-radius: 999px;
+		border: 1px solid #e2e8f0;
+		padding: 0.5rem 1rem;
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: #64748b;
+		transition: all 0.2s ease;
+	}
+
+	.filter-button:hover {
+		border-color: #cbd5f5;
+		color: #334155;
+	}
+
+	.filter-active {
+		background: linear-gradient(120deg, rgba(79, 111, 255, 0.2), rgba(210, 75, 255, 0.2));
+		color: #312e81;
+		border-color: transparent;
+	}
+
+	.badge {
+		border-radius: 999px;
+		padding: 0.35rem 0.75rem;
+		font-size: 0.7rem;
+		font-weight: 600;
+	}
+
+	.badge-warning {
+		background: rgba(245, 158, 11, 0.15);
+		color: #b45309;
+	}
+
+	.badge-info {
+		background: rgba(59, 130, 246, 0.15);
+		color: #1d4ed8;
+	}
+
+	.badge-success {
+		background: rgba(34, 197, 94, 0.15);
+		color: #15803d;
+	}
+
+	.badge-error {
+		background: rgba(239, 68, 68, 0.15);
+		color: #b91c1c;
+	}
+
+	.flavor-pill {
+		border-radius: 999px;
+		background: #f1f5f9;
+		padding: 0.3rem 0.75rem;
+		font-size: 0.7rem;
+		color: #475569;
+	}
+
+	.action-button {
+		border-radius: 999px;
+		padding: 0.6rem 1.2rem;
+		font-size: 0.75rem;
+		font-weight: 600;
+		transition: transform 0.2s ease, box-shadow 0.2s ease;
+	}
+
+	.action-button:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+
+	.action-primary {
+		background: linear-gradient(120deg, #4f6fff, #b94bff);
+		color: white;
+		box-shadow: 0 12px 20px rgba(99, 102, 241, 0.25);
+	}
+
+	.action-success {
+		background: linear-gradient(120deg, #22c55e, #4ade80);
+		color: white;
+		box-shadow: 0 12px 20px rgba(34, 197, 94, 0.2);
+	}
+
+	.action-danger {
+		background: linear-gradient(120deg, #f97316, #ef4444);
+		color: white;
+		box-shadow: 0 12px 20px rgba(248, 113, 113, 0.2);
+	}
+
+	.toggle-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		height: 2.25rem;
+		width: 2.25rem;
+		border-radius: 999px;
+		background: #f1f5f9;
+		color: #64748b;
+		transition: transform 0.2s ease;
+	}
+
+	.metric-card {
+		border-radius: 1.5rem;
+		background: rgba(255, 255, 255, 0.85);
+		padding: 1.25rem;
+		box-shadow: 0 16px 30px rgba(148, 163, 184, 0.15);
+	}
+
+	.metric-label {
+		font-size: 0.7rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.2em;
+		color: #64748b;
+	}
+
+	.metric-value {
+		margin-top: 0.4rem;
+		font-size: 1.6rem;
+		font-weight: 600;
+		color: #0f172a;
+	}
+
+	.metric-sub {
+		margin-top: 0.2rem;
+		font-size: 0.75rem;
+		color: #64748b;
+	}
+
+	.stat-card svg,
+	.metric-card svg,
+	.order-card svg {
+		transition: transform 0.6s ease;
+	}
+
+	.stat-card:hover svg,
+	.metric-card:hover svg,
+	.order-card:hover svg {
+		transform: rotate(360deg);
+	}
+
+	@keyframes tabShimmer {
+		0% {
+			background-position: 0% 50%;
+		}
+		100% {
+			background-position: 100% 50%;
+		}
+	}
+
+	@keyframes titleShift {
+		0% {
+			background-position: 0% 50%;
+		}
+		50% {
+			background-position: 100% 50%;
+		}
+		100% {
+			background-position: 0% 50%;
+		}
+	}
+
+	@keyframes fadeUp {
+		from {
+			opacity: 0;
+			transform: translateY(12px);
+		}
+		to {
+			opacity: 1;
+			transform: translateY(0);
+		}
+	}
+</style>

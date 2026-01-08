@@ -1,0 +1,399 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { supabase } from "../lib/supabaseClient";
+
+export const prerender = false;
+
+const { data: userData } = await supabase.auth.getUser();
+const user = userData?.user;
+if (!user) {
+	return Astro.redirect("/login");
+}
+
+const { data: preorderData } = await supabase
+	.from("preorders")
+	.select("id, name, start_date, end_date, status")
+	.eq("status", "open")
+	.limit(1)
+	.maybeSingle();
+
+const { data: flavorsData } = await supabase
+	.from("flavors")
+	.select("id, name, image_url, is_active")
+	.eq("is_active", true)
+	.order("name", { ascending: true });
+
+const preorder = preorderData ?? null;
+const flavors = flavorsData ?? [];
+const projectRef = new URL(import.meta.env.SUPABASE_URL).hostname.split(".")[0];
+---
+
+<Layout>
+	<main class="min-h-screen bg-gradient-to-b from-white via-[#f4f7ff] to-[#f5e7ff] px-4 pb-32 pt-6 sm:px-6 lg:px-8">
+		<div class="mx-auto flex max-w-3xl flex-col gap-6">
+			<header class="space-y-1">
+				<h1 class="text-2xl font-semibold text-slate-900">Nouvelle commande</h1>
+				<p class="text-sm text-slate-600">Configurez votre precommande</p>
+			</header>
+
+			{!preorder && (
+				<section class="rounded-[20px] border border-dashed border-slate-200 bg-white/80 p-5 text-center text-slate-600 shadow-sm">
+					<p class="font-semibold text-slate-900">Aucune precommande en cours</p>
+					<p class="text-sm">Revenez plus tard ou abonnez-vous aux notifications.</p>
+				</section>
+			)}
+
+			<form
+				id="precommande-form"
+				class="space-y-5"
+				novalidate
+				data-preorder-id={preorder?.id || ""}
+				data-preorder-end={preorder?.end_date || ""}
+				data-project-ref={projectRef}
+			>
+				<input type="hidden" name="preorder_id" value={preorder?.id || ""} />
+
+				<section class="rounded-[20px] bg-white/85 p-5 shadow-lg ring-1 ring-slate-100 backdrop-blur">
+					<p class="text-sm font-semibold text-slate-900">Quantite de cartons</p>
+					<p class="text-xs text-slate-500">Prix unitaire : 75 EUR</p>
+					<div class="mt-4 flex items-center justify-center gap-4">
+						<button type="button" data-action="decrease" class="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-2xl font-semibold text-slate-600 shadow-inner">
+							-
+						</button>
+						<div class="text-center">
+							<p class="text-2xl font-semibold text-slate-900" data-cartons>1</p>
+							<p class="text-xs text-slate-500">carton</p>
+						</div>
+						<button type="button" data-action="increase" class="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-r from-[#2d7dff] via-[#7d4bff] to-[#d74bff] text-2xl font-semibold text-white shadow-lg shadow-blue-500/30">
+							+
+						</button>
+					</div>
+				</section>
+
+				<section class="rounded-[20px] bg-white/85 p-5 shadow-lg ring-1 ring-slate-100 backdrop-blur">
+					<p class="text-sm font-semibold text-slate-900">Recapitulatif</p>
+					<div class="mt-4 space-y-2 text-sm text-slate-700">
+						<div class="flex justify-between">
+							<span>Sous-total</span>
+							<span data-subtotal>75 EUR</span>
+						</div>
+						<div class="flex justify-between">
+							<span>Remise</span>
+							<span data-discount>0%</span>
+						</div>
+						<div class="flex justify-between text-base font-semibold text-slate-900">
+							<span>Total</span>
+							<span data-total>75 EUR</span>
+						</div>
+					</div>
+				</section>
+
+				<section class="rounded-[20px] bg-white/85 p-5 shadow-lg ring-1 ring-slate-100 backdrop-blur">
+					<p class="text-sm font-semibold text-slate-900">Mode de paiement</p>
+					<div class="mt-4 space-y-3">
+						<label class="block rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
+							<div class="flex items-center gap-3">
+								<input type="radio" name="payment_method" value="virement" class="accent-[#2d7dff]" />
+								<div>
+									<p>Virement bancaire</p>
+									<p class="text-xs font-normal text-slate-500">Paiement securise</p>
+								</div>
+							</div>
+						</label>
+						<label class="block rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-800 shadow-sm transition focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
+							<div class="flex items-center gap-3">
+								<input type="radio" name="payment_method" value="liquide" class="accent-[#2d7dff]" />
+								<div>
+									<p>Paiement liquide</p>
+									<p class="text-xs font-normal text-slate-500">A voir snap</p>
+								</div>
+							</div>
+						</label>
+					</div>
+					<div id="iban-info" class="mt-4 hidden rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-slate-700">
+						<p class="font-semibold text-slate-900">Virement bancaire</p>
+						<p>Titulaire: Noah ROGNON</p>
+						<p>IBAN: FR76 2823 3000 0114 0003 6014 026</p>
+					</div>
+				</section>
+
+				<section class="rounded-[20px] bg-white/85 p-5 shadow-lg ring-1 ring-slate-100 backdrop-blur">
+					<div class="flex items-center justify-between">
+						<div>
+							<p class="text-sm font-semibold text-slate-900">Sondage des gouts</p>
+							<p class="text-xs text-slate-500">Selectionnez vos gouts preferes</p>
+						</div>
+						<a
+							href="/catalogue"
+							class="rounded-xl bg-gradient-to-r from-[#2d7dff] via-[#7d4bff] to-[#d74bff] px-3 py-2 text-xs font-semibold text-white shadow-[0_10px_30px_-18px_rgba(73,70,255,0.6)]"
+						>
+							Voir le catalogue
+						</a>
+					</div>
+
+					<div class="mt-4 space-y-3">
+						{flavors.map((flavor) => (
+							<div class="flex items-center justify-between rounded-xl border border-slate-200 bg-white px-3 py-3 shadow-sm">
+								<div class="flex items-center gap-3">
+									<img src={flavor.image_url || "/placeholder.jpg"} alt={flavor.name} class="h-10 w-10 rounded-lg object-cover" loading="lazy" />
+									<span class="text-sm font-semibold text-slate-800">{flavor.name}</span>
+								</div>
+								<div class="flex items-center gap-2">
+									<button type="button" class="flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 text-lg font-semibold text-slate-600" data-flavor-decrease={flavor.id}>
+										-
+									</button>
+									<span class="w-6 text-center text-sm font-semibold text-slate-900" data-flavor-qty={flavor.id}>0</span>
+									<button type="button" class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-200 text-lg font-semibold text-amber-800" data-flavor-increase={flavor.id}>
+										+
+									</button>
+								</div>
+							</div>
+						))}
+					</div>
+				</section>
+
+				<div class="space-y-2" id="form-messages"></div>
+
+				<button
+					type="button"
+					id="submit-precommande"
+					class="w-full rounded-xl bg-gradient-to-r from-[#2d7dff] via-[#7d4bff] to-[#d74bff] px-4 py-3 text-sm font-semibold text-white shadow-[0_18px_45px_-22px_rgba(73,70,255,0.6)] transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white disabled:cursor-not-allowed disabled:opacity-60"
+					disabled={!preorder}
+				>
+					Valider la precommande
+				</button>
+			</form>
+		</div>
+	</main>
+
+	<script type="module">
+		(() => {
+			console.log("SCRIPT CLIENT OK");
+			const messagesEl = document.getElementById("form-messages");
+			const submitBtn = document.getElementById("submit-precommande");
+			const form = document.getElementById("precommande-form");
+			if (!messagesEl || !submitBtn || !form) {
+				console.error("Precommande: elements introuvables");
+				return;
+			}
+
+			const preorderId = form.getAttribute("data-preorder-id") || "";
+			const preorderEnd = form.getAttribute("data-preorder-end") || "";
+			const projectRef = form.getAttribute("data-project-ref") || "";
+
+			const pricePerCarton = 75;
+			let cartons = 1;
+			const flavorQuantities = new Map();
+			form.querySelectorAll("[data-flavor-qty]").forEach((el) => {
+				const id = el.getAttribute("data-flavor-qty");
+				if (id) flavorQuantities.set(id, 0);
+			});
+			const ibanInfo = document.getElementById("iban-info");
+
+			const cartEl = form.querySelector("[data-cartons]");
+			const subtotalEl = form.querySelector("[data-subtotal]");
+			const discountEl = form.querySelector("[data-discount]");
+			const totalEl = form.querySelector("[data-total]");
+
+			const renderTotals = () => {
+				const subtotal = cartons * pricePerCarton;
+				let discountPct = 0;
+				if (cartons >= 10) discountPct = 10;
+				else if (cartons >= 5) discountPct = 7;
+				else if (cartons >= 3) discountPct = 4;
+
+				const total = Math.round(subtotal * (1 - discountPct / 100));
+
+				if (cartEl) cartEl.textContent = String(cartons);
+				if (subtotalEl) subtotalEl.textContent = `${subtotal} EUR`;
+				if (discountEl) discountEl.textContent = `${discountPct}%`;
+				if (totalEl) totalEl.textContent = `${total} EUR`;
+				return { subtotal, discountPct, total };
+			};
+
+			const setMessage = (text, type = "error") => {
+				messagesEl.innerHTML = "";
+				if (!text) return;
+				const p = document.createElement("p");
+				p.className =
+					type === "error"
+						? "rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700"
+						: "rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700";
+				p.textContent = text;
+				messagesEl.appendChild(p);
+			};
+
+			if (!preorderId) submitBtn.disabled = true;
+
+			const totalFlavorCount = () => {
+				let total = 0;
+				for (const qty of flavorQuantities.values()) total += qty;
+				return total;
+			};
+
+			form.addEventListener("change", (event) => {
+				const target = event.target;
+				if (!(target instanceof HTMLInputElement)) return;
+				if (target.name === "payment_method" && ibanInfo) {
+					if (target.value === "virement") {
+						ibanInfo.classList.remove("hidden");
+					} else {
+						ibanInfo.classList.add("hidden");
+					}
+				}
+			});
+
+			form.addEventListener("click", (event) => {
+				const target = event.target;
+				if (!(target instanceof HTMLElement)) return;
+				const incCart = target.closest("[data-action='increase']");
+				const decCart = target.closest("[data-action='decrease']");
+				const incFlavor = target.closest("[data-flavor-increase]");
+				const decFlavor = target.closest("[data-flavor-decrease]");
+
+				if (incCart) {
+					cartons += 1;
+					renderTotals();
+				}
+				if (decCart) {
+					if (cartons > 1) cartons -= 1;
+					renderTotals();
+				}
+				if (incFlavor) {
+					const id = incFlavor.getAttribute("data-flavor-increase");
+					if (!id) return;
+					if (totalFlavorCount() >= 10) {
+						setMessage("Maximum 10 gouts selectionnes.");
+						return;
+					}
+					const next = (flavorQuantities.get(id) || 0) + 1;
+					flavorQuantities.set(id, next);
+					const qtyEl = form.querySelector(`[data-flavor-qty='${id}']`);
+					if (qtyEl) qtyEl.textContent = String(next);
+				}
+				if (decFlavor) {
+					const id = decFlavor.getAttribute("data-flavor-decrease");
+					if (!id) return;
+					const next = Math.max(0, (flavorQuantities.get(id) || 0) - 1);
+					flavorQuantities.set(id, next);
+					const qtyEl = form.querySelector(`[data-flavor-qty='${id}']`);
+					if (qtyEl) qtyEl.textContent = String(next);
+				}
+			});
+
+			renderTotals();
+			const paymentSelected = form.querySelector("input[name='payment_method']:checked");
+			if (paymentSelected && ibanInfo) {
+				if (paymentSelected.value === "virement") {
+					ibanInfo.classList.remove("hidden");
+				}
+			}
+
+			const generateOrderNumber = () => {
+				const now = new Date();
+				const year = now.getFullYear();
+				const rand = Math.floor(Math.random() * 900 + 100);
+				return `CMD-${year}-${rand}`;
+			};
+
+			const addDays = (dateStr, days) => {
+				const d = new Date(dateStr);
+				d.setUTCDate(d.getUTCDate() + days);
+				return d.toISOString();
+			};
+
+			submitBtn.addEventListener("click", async () => {
+				setMessage("");
+				submitBtn.disabled = true;
+
+				if (!preorderId) {
+					setMessage("Aucune precommande ouverte.");
+					submitBtn.disabled = false;
+					return;
+				}
+
+				const paymentMethod = form.querySelector("input[name='payment_method']:checked")?.value;
+				const selectedFlavors = Array.from(flavorQuantities.entries())
+					.filter(([_, qty]) => qty > 0)
+					.map(([flavor_id, quantity]) => ({ flavor_id, quantity }));
+				const selectedTotal = totalFlavorCount();
+
+				if (cartons < 1) {
+					setMessage("Veuillez selectionner au moins 1 carton.");
+					submitBtn.disabled = false;
+					return;
+				}
+
+				if (!paymentMethod) {
+					setMessage("Veuillez choisir un mode de paiement.");
+					submitBtn.disabled = false;
+					return;
+				}
+
+				if (selectedFlavors.length === 0) {
+					setMessage("Veuillez selectionner au moins un gout.");
+					submitBtn.disabled = false;
+					return;
+				}
+				if (selectedTotal > 10) {
+					setMessage("Maximum 10 gouts selectionnes.");
+					submitBtn.disabled = false;
+					return;
+				}
+
+				const { total } = renderTotals();
+				const estimated_delivery_start = addDays(preorderEnd, 14);
+				const estimated_delivery_end = addDays(preorderEnd, 17);
+				const order_number = generateOrderNumber();
+
+				let authToken = "";
+				if (projectRef && typeof window !== "undefined") {
+					const key = `sb-${projectRef}-auth-token`;
+					try {
+						const stored = window.localStorage.getItem(key);
+						if (stored) {
+							const parsedToken = JSON.parse(stored);
+							authToken = parsedToken?.access_token || "";
+						}
+					} catch (e) {
+						console.warn("Impossible de lire le token Supabase", e);
+					}
+				}
+
+				const response = await fetch("/api/create-order", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+						...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+					},
+					body: JSON.stringify({
+						cartons,
+						payment_method: paymentMethod,
+						flavors: selectedFlavors,
+						preorder_id: preorderId,
+						estimated_delivery_start,
+						estimated_delivery_end,
+						order_number,
+						total
+					})
+				});
+
+				let result = null;
+				try {
+					result = await response.json();
+				} catch {
+					result = null;
+				}
+
+				if (!response.ok || !result?.success) {
+					setMessage(result?.error || "Impossible de creer la commande.");
+					submitBtn.disabled = false;
+					return;
+				}
+
+				setMessage("Commande creee avec succes !", "success");
+				window.location.href = "/dashboard";
+			});
+		})();
+	</script>
+</Layout>

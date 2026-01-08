@@ -1,0 +1,47 @@
+---
+const steps = [
+	{
+		id: "01",
+		title: "Tu précommandes",
+		desc: "Choisis tes goûts et ta quantité en quelques clics"
+	},
+	{
+		id: "02",
+		title: "Nous regroupons",
+		desc: "Les commandes sont consolidées pour optimiser l'arrivée"
+	},
+	{
+		id: "03",
+		title: "Tu reçois",
+		desc: "Ta commande arrive rapidement avec les goûts demandés"
+	}
+];
+---
+
+<section class="bg-white px-4 py-10 sm:px-6 lg:px-8">
+	<div class="mx-auto flex max-w-4xl flex-col gap-6">
+		<header class="text-center space-y-2">
+			<h2 class="text-2xl font-semibold bg-gradient-to-r from-[#3d7fff] via-[#9d55ff] to-[#d94bff] bg-clip-text text-transparent">
+				Comment ça marche ?
+			</h2>
+			<p class="text-sm text-slate-600 sm:text-base">Un processus simple en 3 étapes</p>
+		</header>
+
+		<div class="grid grid-cols-1 gap-5 lg:grid-cols-3">
+			{steps.map((step) => (
+				<div class="rounded-3xl bg-gradient-to-br from-[#4c9dff]/35 via-[#7f63ff]/30 to-[#f087ff]/35 p-[1px] shadow-[0_18px_45px_-20px_rgba(73,70,255,0.55)]">
+					<div class="flex h-full flex-col items-center gap-4 rounded-3xl bg-white/70 px-6 py-8 text-center backdrop-blur">
+						<div class="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-[#3d7fff] via-[#8e5bff] to-[#ff4bd0] text-lg font-semibold text-white shadow-lg shadow-[#7a4bff]/35">
+							<span aria-hidden="true">{step.id}</span>
+						</div>
+						<div class="space-y-1">
+							<p class="text-xl font-semibold text-[#4b63ff]">{step.id}</p>
+							<h3 class="text-lg font-semibold text-slate-900">{step.title}</h3>
+							<p class="text-sm text-slate-600 sm:text-base">{step.desc}</p>
+						</div>
+					</div>
+				</div>
+			))}
+		</div>
+	</div>
+</section>

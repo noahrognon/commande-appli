@@ -1,0 +1,112 @@
+---
+import Layout from "../layouts/Layout.astro";
+import { supabase } from "../lib/supabaseClient";
+import PreorderBanner from "../components/PreorderBanner.astro";
+import DashboardNav from "../components/DashboardNav.astro";
+
+export const prerender = false;
+
+let firstName = "Invité";
+
+const { data: userData } = await supabase.auth.getUser();
+const user = userData?.user;
+
+if (user) {
+    const meta = user.user_metadata || {};
+    if (
+        typeof meta.first_name === "string" &&
+        meta.first_name.trim().length > 0
+    ) {
+        firstName = meta.first_name.trim();
+    } else if (
+        typeof meta.firstName === "string" &&
+        meta.firstName.trim().length > 0
+    ) {
+        firstName = meta.firstName.trim();
+    } else if (typeof user.email === "string") {
+        firstName = user.email.split("@")[0] || firstName;
+    }
+}
+---
+
+<Layout>
+    <main
+        class="min-h-screen bg-gradient-to-b from-white via-[#f6f8ff] to-[#f1e7ff] px-4 py-10 sm:px-6 lg:px-8"
+    >
+        <div class="mx-auto flex max-w-5xl flex-col gap-6">
+            <section
+                class="rounded-[28px] bg-white/80 p-6 shadow-xl ring-1 ring-slate-100 backdrop-blur-md sm:p-8"
+            >
+                <div class="flex flex-col gap-6">
+                    <div
+                        class="flex flex-wrap items-start justify-between gap-4"
+                    >
+                        <div class="space-y-2">
+                            <p
+                                class="text-3xl font-semibold text-slate-900 sm:text-4xl"
+                            >
+                                Bonjour, <span
+                                    class="bg-gradient-to-r from-[#3d7fff] via-[#9d55ff] to-[#d94bff] bg-clip-text text-transparent"
+                                    >{firstName}</span
+                                >
+                            </p>
+                            <p class="text-sm text-slate-600 sm:text-base">
+                                Bienvenue sur votre espace Les Gens Avant
+                                L'Argent.
+                            </p>
+                        </div>
+
+                        <div
+                            class="rounded-[24px] bg-gradient-to-r from-[#2d7dff] via-[#7d4bff] to-[#d74bff] p-1 shadow-[0_18px_45px_-22px_rgba(73,70,255,0.6)] flex justify-center items-center"
+                        >
+                            <div
+                                class="flex flex-col items-start justify-between gap-4 rounded-[22px] bg-white/5 px-6 py-5 text-white sm:flex-row sm:items-center sm:gap-6"
+                            >
+                                <div>
+                                    <p class="text-xl font-semibold">
+                                        Passer une commande
+                                    </p>
+                                    <p class="text-sm text-white/80">
+                                        Profitez des remises jusqu'à -10%
+                                    </p>
+                                </div>
+                                <a
+                                    href="/precommande"
+                                    class="inline-flex items-center gap-2 rounded-xl bg-white/15 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/25 transition hover:bg-white/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+                                >
+                                    <span>Commencer</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+			</section>
+
+			<PreorderBanner />
+
+			<section class="rounded-[24px] bg-white/85 p-6 shadow-lg ring-1 ring-slate-100 backdrop-blur sm:p-7">
+				<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div class="space-y-1">
+						<p class="text-sm font-semibold text-slate-900">Catalogue des goûts</p>
+						<p class="text-sm text-slate-600">Découvre les saveurs disponibles et passe ta prochaine commande.</p>
+					</div>
+					<div class="flex flex-wrap gap-3">
+						<a
+							href="/catalogue"
+							class="inline-flex items-center rounded-xl bg-gradient-to-r from-[#2d7dff] via-[#7d4bff] to-[#d74bff] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_30px_-16px_rgba(73,70,255,0.6)] transition hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+						>
+							Voir le catalogue
+						</a>
+						<a
+							href="/precommande"
+							class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+						>
+							Passer une commande
+						</a>
+					</div>
+				</div>
+			</section>
+		</div>
+	</main>
+	<DashboardNav />
+</Layout>

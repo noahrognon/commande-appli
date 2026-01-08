@@ -1,0 +1,44 @@
+---
+import { supabase } from "../lib/supabaseClient";
+
+const brandLine = "Les Gens Avant L'Argent";
+const { data } = await supabase.auth.getUser();
+const user = data?.user;
+const isAuthenticated = Boolean(user);
+---
+
+<header class="w-full bg-white">
+	<div class="mx-auto flex items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+		<a
+			href="/"
+			class="bg-gradient-to-r from-[#3d7fff] via-[#9d55ff] to-[#d94bff] bg-clip-text text-base font-semibold text-transparent sm:text-lg"
+		>
+			{brandLine}
+		</a>
+		<div class="flex items-center gap-3">
+			{isAuthenticated ? (
+				<>
+					<a
+						href="/dashboard"
+						class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+					>
+						Profil
+					</a>
+					<a
+						href="/logout"
+						class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+					>
+						Sortie
+					</a>
+				</>
+			) : (
+				<a
+					href="/login"
+					class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+				>
+					Se connecter
+				</a>
+			)}
+		</div>
+	</div>
+</header>
