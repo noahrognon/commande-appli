@@ -1,14 +1,15 @@
----
+﻿---
 import Layout from "../layouts/Layout.astro";
-import { supabase } from "../lib/supabaseClient";
+import { createServerClient, getUserFromCookies } from "../lib/supabaseServer";
 
 export const prerender = false;
 
-const { data: userData } = await supabase.auth.getUser();
-const user = userData?.user;
+const user = await getUserFromCookies(Astro.cookies);
 if (!user) {
 	return Astro.redirect("/login");
 }
+
+const supabase = createServerClient();
 
 const { data: preorderData } = await supabase
 	.from("preorders")
@@ -397,3 +398,5 @@ const projectRef = new URL(import.meta.env.SUPABASE_URL).hostname.split(".")[0];
 		})();
 	</script>
 </Layout>
+
+

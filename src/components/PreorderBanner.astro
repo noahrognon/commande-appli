@@ -1,6 +1,7 @@
 ---
-import { supabase } from "../lib/supabaseClient";
+import { createServerClient } from "../lib/supabaseServer";
 
+const supabase = createServerClient();
 const { data, error } = await supabase
 	.from("preorders")
 	.select("id, name, end_date, status")

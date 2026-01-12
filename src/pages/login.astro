@@ -1,12 +1,13 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { supabase } from "../lib/supabaseClient";
+import { createServerClient } from "../lib/supabaseServer";
 
 export const prerender = false;
 
 let error: string | null = null;
 
 if (Astro.request.method === "POST") {
+	const supabase = createServerClient();
 	let email = "";
 	let password = "";
 

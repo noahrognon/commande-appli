@@ -1,9 +1,10 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { supabase } from "../lib/supabaseClient";
+import { createServerClient } from "../lib/supabaseServer";
 
 export const prerender = false;
 
+const supabase = createServerClient();
 const { data, error } = await supabase
 	.from("flavors")
 	.select("id, name, description, image_url, is_active")

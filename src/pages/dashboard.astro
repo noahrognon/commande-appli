@@ -1,15 +1,14 @@
----
+﻿---
 import Layout from "../layouts/Layout.astro";
-import { supabase } from "../lib/supabaseClient";
+import { getUserFromCookies } from "../lib/supabaseServer";
 import PreorderBanner from "../components/PreorderBanner.astro";
 import DashboardNav from "../components/DashboardNav.astro";
 
 export const prerender = false;
 
-let firstName = "Invité";
+let firstName = "Invite";
 
-const { data: userData } = await supabase.auth.getUser();
-const user = userData?.user;
+const user = await getUserFromCookies(Astro.cookies);
 
 if (user) {
     const meta = user.user_metadata || {};
@@ -67,7 +66,7 @@ if (user) {
                                         Passer une commande
                                     </p>
                                     <p class="text-sm text-white/80">
-                                        Profitez des remises jusqu'à -10%
+                                        Profitez des remises jusqu'Ã  -10%
                                     </p>
                                 </div>
                                 <a
@@ -87,8 +86,8 @@ if (user) {
 			<section class="rounded-[24px] bg-white/85 p-6 shadow-lg ring-1 ring-slate-100 backdrop-blur sm:p-7">
 				<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 					<div class="space-y-1">
-						<p class="text-sm font-semibold text-slate-900">Catalogue des goûts</p>
-						<p class="text-sm text-slate-600">Découvre les saveurs disponibles et passe ta prochaine commande.</p>
+						<p class="text-sm font-semibold text-slate-900">Catalogue des goÃ»ts</p>
+						<p class="text-sm text-slate-600">DÃ©couvre les saveurs disponibles et passe ta prochaine commande.</p>
 					</div>
 					<div class="flex flex-wrap gap-3">
 						<a
@@ -110,3 +109,5 @@ if (user) {
 	</main>
 	<DashboardNav />
 </Layout>
+
+

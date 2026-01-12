@@ -1,9 +1,8 @@
 ---
-import { supabase } from "../lib/supabaseClient";
+import { getUserFromCookies } from "../lib/supabaseServer";
 
 const brandLine = "Les Gens Avant L'Argent";
-const { data } = await supabase.auth.getUser();
-const user = data?.user;
+const user = await getUserFromCookies(Astro.cookies);
 const isAuthenticated = Boolean(user);
 ---
 

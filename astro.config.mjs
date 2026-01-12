@@ -10,7 +10,7 @@ export default defineConfig({
   adapter: node({
     mode: 'standalone', // Produit un entry.mjs autonome pour PM2
   }),
-
+  
   vite: {
     plugins: [tailwindcss()],
   },

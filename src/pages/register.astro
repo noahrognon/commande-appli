@@ -1,6 +1,6 @@
 ---
 import Layout from "../layouts/Layout.astro";
-import { supabase } from "../lib/supabaseClient";
+import { createServerClient } from "../lib/supabaseServer";
 
 export const prerender = false;
 
@@ -8,6 +8,7 @@ let error: string | null = null;
 let success: string | null = null;
 
 if (Astro.request.method === "POST") {
+	const supabase = createServerClient();
 	const contentType = (Astro.request.headers.get("content-type") || "").toLowerCase();
 
 	let firstName = "";
