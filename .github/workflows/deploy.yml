@@ -1,46 +1,79 @@
-name: Deploy to VPS
+name: Build and Deploy Commande
 
 on:
   push:
-    branches:
-      - master
+    branches: [master]   # adapte si ta branche principale s'appelle "main"
 
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Install Node
-        uses: actions/setup-node@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
 
-      - name: Build Astro
-        run: npm run build
+      - name: Build project
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE: ${{ secrets.SUPABASE_SERVICE_ROLE }} # si tu l'utilises
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          # ajoute ici les autres secrets nécessaires au build
+        run: |
+          npm run build
+          # on met un package.json dans dist/server pour installer les deps en prod
+          cp package.json dist/server/
 
-      - name: Deploy files to VPS
-        uses: appleboy/scp-action@v0.1.4
+      - name: Deploy build to VPS via SCP
+        uses: appleboy/scp-action@v0.1.3
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.HOST }}           # ex: 51.15.xx.xx
+          username: ${{ secrets.USER }}       # ex: noah
+          key: ${{ secrets.SSH_PRIVATE_KEY }} # clé privée du déploiement
+          port: 22
           source: "dist/*"
-          target: "/var/www/commande"
+          target: "/var/www/commande/"
+          strip_components: 1
+          rm: false
+          overwrite: true
+          debug: true
 
-      - name: Restart Astro SSR service
-        uses: appleboy/ssh-action@v0.1.10
+      - name: Install prod dependencies and restart pm2 on VPS
+        uses: appleboy/ssh-action@v1.0.0
         with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
           script: |
-            source ~/.bashrc
-            cd /var/www/commande
-            PORT=8087 pm2 restart commande || pm2 start entry.mjs --name commande
+            # Charger nvm (comme pour le portfolio)
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+            nvm use 20
+
+            # S'assurer que pm2 est dispo pour cet utilisateur
+            npm install -g pm2
+
+            cd /var/www/commande/server
+
+            # installer seulement les deps de prod
+            npm ci --omit=dev
+
+            # démarrer ou redémarrer l'app sur le port 8087
+            PORT=8087 pm2 restart commande || PORT=8087 pm2 start entry.mjs --name commande
+
+            # sauvegarder la config pm2 pour reboot
             pm2 save
