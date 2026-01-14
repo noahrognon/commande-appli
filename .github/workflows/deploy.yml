@@ -40,4 +40,4 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           script: |
-            pm2 restart commande
+            PORT=8087 pm2 restart commande || PORT=8082 pm2 start entry.mjs --commande
