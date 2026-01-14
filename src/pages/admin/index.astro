@@ -977,7 +977,26 @@ const formatNumber = (value: number) => Math.round(value).toString();
 					>
 						Prolonger de 24h
 					</button>
+					<button
+						type="button"
+						class="action-button action-primary"
+						data-action="send-supplier-email"
+						data-preorder-id={openPreorder?.id || ""}
+						disabled={!openPreorder}
+					>
+						Commande fournisseur envoyee
+					</button>
+					<button
+						type="button"
+						class="action-button action-success"
+						data-action="send-stock-email"
+						data-preorder-id={openPreorder?.id || ""}
+						disabled={!openPreorder}
+					>
+						Stock recu / pret a livrer
+					</button>
 				</div>
+				<p class="text-xs text-slate-500" data-admin-email-status></p>
 
 				<div
 					class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50"
@@ -1060,6 +1079,7 @@ const formatNumber = (value: number) => Math.round(value).toString();
 	const orderCards = Array.from(
 		document.querySelectorAll("[data-order-card]"),
 	);
+	const emailStatus = document.querySelector("[data-admin-email-status]");
 	let activeStatus = "all";
 
 	const applyFilters = () => {
@@ -1164,6 +1184,57 @@ const formatNumber = (value: number) => Math.round(value).toString();
 				extendButton.removeAttribute("disabled");
 				extendButton.textContent = "Prolonger de 24h";
 				console.error(err);
+			}
+		}
+
+		const supplierButton = target.closest("[data-action='send-supplier-email']");
+		if (supplierButton) {
+			const preorderId = supplierButton.getAttribute("data-preorder-id") || "";
+			if (!preorderId) return;
+			supplierButton.setAttribute("disabled", "true");
+			supplierButton.textContent = "Envoi...";
+			if (emailStatus) emailStatus.textContent = "Envoi des emails fournisseur...";
+			try {
+				const response = await fetch("/api/admin/preorder/send-supplier-order-emails", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ preorderId })
+				});
+				const result = await response.json();
+				if (!response.ok) throw new Error(result?.error || "Erreur");
+				if (emailStatus) emailStatus.textContent = `Emails envoyes: ${result?.sent ?? 0}`;
+			} catch (err) {
+				if (emailStatus) emailStatus.textContent = "Erreur lors de l'envoi des emails.";
+				console.error(err);
+			} finally {
+				supplierButton.removeAttribute("disabled");
+				supplierButton.textContent = "Commande fournisseur envoyee";
+			}
+			return;
+		}
+
+		const stockButton = target.closest("[data-action='send-stock-email']");
+		if (stockButton) {
+			const preorderId = stockButton.getAttribute("data-preorder-id") || "";
+			if (!preorderId) return;
+			stockButton.setAttribute("disabled", "true");
+			stockButton.textContent = "Envoi...";
+			if (emailStatus) emailStatus.textContent = "Envoi des emails stock recu...";
+			try {
+				const response = await fetch("/api/admin/preorder/send-stock-received-emails", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ preorderId })
+				});
+				const result = await response.json();
+				if (!response.ok) throw new Error(result?.error || "Erreur");
+				if (emailStatus) emailStatus.textContent = `Emails envoyes: ${result?.sent ?? 0}`;
+			} catch (err) {
+				if (emailStatus) emailStatus.textContent = "Erreur lors de l'envoi des emails.";
+				console.error(err);
+			} finally {
+				stockButton.removeAttribute("disabled");
+				stockButton.textContent = "Stock recu / pret a livrer";
 			}
 		}
 	});

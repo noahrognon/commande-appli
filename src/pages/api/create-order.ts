@@ -1,5 +1,7 @@
 import type { APIRoute } from "astro";
 import { createClient } from "@supabase/supabase-js";
+import { sendMail } from "../../lib/mailer";
+import { getOrderConfirmationEmail } from "../../lib/emailTemplates";
 
 const SUPABASE_URL = import.meta.env.SUPABASE_URL;
 const SUPABASE_ANON_KEY = import.meta.env.SUPABASE_ANON_KEY;
@@ -45,7 +47,10 @@ export const POST: APIRoute = async ({ request }) => {
 		const payment_method = body.payment_method as string;
 		const preorder_id = body.preorder_id as string;
 		const flavors = Array.isArray(body.flavors) ? body.flavors : [];
-		const order_number = body.order_number as string;
+		const requestedOrderNumber = body.order_number as string;
+		const order_number =
+			requestedOrderNumber ||
+			`CMD-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`;
 
 		if (!preorder_id) {
 			return new Response(JSON.stringify({ success: false, error: "Precommande manquante." }), { status: 400 });
@@ -125,6 +130,43 @@ export const POST: APIRoute = async ({ request }) => {
 		const { error: flavorsInsertError } = await adminClient.from("order_flavors").insert(flavorRows);
 		if (flavorsInsertError) {
 			return new Response(JSON.stringify({ success: false, error: flavorsInsertError.message }), { status: 400 });
+		}
+
+		const firstName =
+			(typeof user.user_metadata?.first_name === "string" && user.user_metadata.first_name) ||
+			(typeof user.user_metadata?.firstName === "string" && user.user_metadata.firstName) ||
+			"";
+
+		if (user.email) {
+			try {
+				const emailContent = getOrderConfirmationEmail({
+					firstName,
+					orderNumber: order_number || `CMD-${order_id}`,
+					cartons,
+					total,
+					estimatedStart: estimated_delivery_start,
+					estimatedEnd: estimated_delivery_end,
+					paymentMethod: payment_method
+				});
+				await sendMail({
+					to: user.email,
+					subject: emailContent.subject,
+					html: emailContent.html,
+					text: emailContent.text
+				});
+
+				const { error: logError } = await adminClient.from("email_logs").insert({
+					type: "order_confirmation",
+					user_id: user.id,
+					preorder_id,
+					order_id
+				});
+				if (logError) {
+					console.error("Email log insert failed", logError);
+				}
+			} catch (mailError) {
+				console.error("Email confirmation failed", mailError);
+			}
 		}
 
 		return new Response(JSON.stringify({ success: true }), { status: 200 });
