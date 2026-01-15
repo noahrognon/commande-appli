@@ -1,7 +1,7 @@
 import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { fetchUsersMap } from "../../../lib/userLookup";
-import { sendMail } from "../../../lib/mailer";
+import { sendEmail } from "../../../../server/lib/email.js";
 import { getPreorderReminderEmail } from "../../../lib/emailTemplates";
 
 export const GET: APIRoute = async () => {
@@ -84,7 +84,7 @@ export const GET: APIRoute = async () => {
 		});
 
 		try {
-			await sendMail({
+			await sendEmail({
 				to: user.email,
 				subject: emailContent.subject,
 				html: emailContent.html,

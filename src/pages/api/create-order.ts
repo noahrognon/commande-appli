@@ -1,6 +1,6 @@
 import type { APIRoute } from "astro";
 import { createClient } from "@supabase/supabase-js";
-import { sendMail } from "../../lib/mailer";
+import { sendEmail } from "../../../server/lib/email.js";
 import { getOrderConfirmationEmail } from "../../lib/emailTemplates";
 
 const SUPABASE_URL = import.meta.env.SUPABASE_URL;
@@ -148,7 +148,7 @@ export const POST: APIRoute = async ({ request }) => {
 					estimatedEnd: estimated_delivery_end,
 					paymentMethod: payment_method
 				});
-				await sendMail({
+				await sendEmail({
 					to: user.email,
 					subject: emailContent.subject,
 					html: emailContent.html,

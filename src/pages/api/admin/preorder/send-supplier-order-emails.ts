@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { requireAdminRequest } from "../../../../lib/adminGuard";
 import { fetchUsersMap } from "../../../../lib/userLookup";
-import { sendMail } from "../../../../lib/mailer";
+import { sendEmail } from "../../../../../server/lib/email.js";
 import { getSupplierOrderSentEmail } from "../../../../lib/emailTemplates";
 
 export const POST: APIRoute = async ({ request }) => {
@@ -79,7 +79,7 @@ export const POST: APIRoute = async ({ request }) => {
 		});
 
 		try {
-			await sendMail({
+			await sendEmail({
 				to: user.email,
 				subject: emailContent.subject,
 				html: emailContent.html,
