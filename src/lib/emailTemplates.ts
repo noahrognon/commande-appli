@@ -1,4 +1,6 @@
-const siteUrl = (import.meta.env.PUBLIC_SITE_URL || "").toString().replace(/\/$/, "");
+const siteUrl = (import.meta.env.PUBLIC_SITE_URL || "https://commande.noahrognon.fr")
+	.toString()
+	.replace(/\/$/, "");
 
 const formatDate = (value?: string) => {
 	if (!value) return "N/A";

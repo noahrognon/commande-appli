@@ -96,6 +96,21 @@ export const POST: APIRoute = async ({ request }) => {
 		});
 		const total = pricing.total;
 
+		const flavorRows = flavors
+			.filter((f: any) => f?.flavor_id && Number(f?.quantity) > 0)
+			.map((f: any) => ({
+				flavor_id: f.flavor_id,
+				quantity: Number(f.quantity)
+			}));
+
+		const totalFlavorCount = flavorRows.reduce((sum, f) => sum + Number(f.quantity || 0), 0);
+		if (flavorRows.length === 0) {
+			return new Response(JSON.stringify({ success: false, error: "Aucun gout selectionne." }), { status: 400 });
+		}
+		if (totalFlavorCount > 10) {
+			return new Response(JSON.stringify({ success: false, error: "Maximum 10 gouts selectionnes." }), { status: 400 });
+		}
+
 		const addDays = (dateStr: string, days: number) => {
 			const d = new Date(dateStr);
 			d.setUTCDate(d.getUTCDate() + days);
@@ -129,23 +144,13 @@ export const POST: APIRoute = async ({ request }) => {
 		}
 
 		const order_id = orderInsert.id;
-		const flavorRows = flavors
-			.filter((f: any) => f?.flavor_id && Number(f?.quantity) > 0)
-			.map((f: any) => ({
-				order_id,
-				flavor_id: f.flavor_id,
-				quantity: Number(f.quantity)
-			}));
+		const orderFlavorRows = flavorRows.map((row) => ({
+			order_id,
+			flavor_id: row.flavor_id,
+			quantity: row.quantity
+		}));
 
-		const totalFlavorCount = flavorRows.reduce((sum, f) => sum + Number(f.quantity || 0), 0);
-		if (flavorRows.length === 0) {
-			return new Response(JSON.stringify({ success: false, error: "Aucun gout selectionne." }), { status: 400 });
-		}
-		if (totalFlavorCount > 10) {
-			return new Response(JSON.stringify({ success: false, error: "Maximum 10 gouts selectionnes." }), { status: 400 });
-		}
-
-		const { error: flavorsInsertError } = await adminClient.from("order_flavors").insert(flavorRows);
+		const { error: flavorsInsertError } = await adminClient.from("order_flavors").insert(orderFlavorRows);
 		if (flavorsInsertError) {
 			await adminClient.from("orders").delete().eq("id", order_id);
 			return new Response(JSON.stringify({ success: false, error: flavorsInsertError.message }), { status: 400 });
@@ -200,7 +205,7 @@ export const POST: APIRoute = async ({ request }) => {
 				});
 
 				const { error: logError } = await adminClient.from("email_logs").insert({
-					type: "order_confirmation",
+					type: `order_confirmation_${order_id}`,
 					user_id: user.id,
 					preorder_id,
 					order_id

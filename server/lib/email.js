@@ -38,6 +38,7 @@ const loadEnvIfNeeded = () => {
 
 let cachedTransporter = null;
 let cachedFrom = null;
+let verifyPromise = null;
 
 const getSmtpConfig = () => {
 	loadEnvIfNeeded();
@@ -83,7 +84,13 @@ export const sendEmail = async ({ to, subject, html, text }) => {
 	const transporter = getTransporter();
 	const from = cachedFrom || getSmtpConfig().SMTP_FROM;
 	try {
-		await transporter.verify();
+		if (!verifyPromise) {
+			verifyPromise = transporter.verify().catch((error) => {
+				verifyPromise = null;
+				throw error;
+			});
+		}
+		await verifyPromise;
 	} catch (error) {
 		console.error("SMTP verify failed", error);
 		throw new Error("SMTP verify failed");
