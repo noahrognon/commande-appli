@@ -2,9 +2,12 @@ import type { APIRoute } from "astro";
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail } from "../../../server/lib/email.js";
 import { getOrderConfirmationEmail } from "../../lib/emailTemplates";
+import { createNotification } from "../../lib/notifications";
+import { computeOrderPricing } from "../../lib/orderPricing";
+import type { PromoCodeRow } from "../../lib/promoCodes";
+import { validatePromoCode } from "../../lib/promoCodes";
 
 const SUPABASE_URL = import.meta.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.SUPABASE_ANON_KEY;
 const SUPABASE_SERVICE_ROLE_KEY = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const adminClient = SUPABASE_SERVICE_ROLE_KEY
@@ -47,6 +50,7 @@ export const POST: APIRoute = async ({ request }) => {
 		const payment_method = body.payment_method as string;
 		const preorder_id = body.preorder_id as string;
 		const flavors = Array.isArray(body.flavors) ? body.flavors : [];
+		const promo_code = String(body.promo_code || "");
 		const requestedOrderNumber = body.order_number as string;
 		const order_number =
 			requestedOrderNumber ||
@@ -73,13 +77,24 @@ export const POST: APIRoute = async ({ request }) => {
 			return new Response(JSON.stringify({ success: false, error: "Aucune precommande ouverte." }), { status: 400 });
 		}
 
-		// Recalcul server-side
-		const subtotal = cartons * 75;
-		let discountPct = 0;
-		if (cartons >= 10) discountPct = 10;
-		else if (cartons >= 5) discountPct = 7;
-		else if (cartons >= 3) discountPct = 4;
-		const total = Math.round(subtotal * (1 - discountPct / 100));
+		let promo: PromoCodeRow | null = null;
+		if (promo_code) {
+			const promoResult = await validatePromoCode({
+				client: adminClient,
+				code: promo_code,
+				cartons
+			});
+			if (!promoResult.ok) {
+				return new Response(JSON.stringify({ success: false, error: promoResult.error }), { status: 400 });
+			}
+			promo = promoResult.promo;
+		}
+
+		const pricing = computeOrderPricing({
+			cartons,
+			promo
+		});
+		const total = pricing.total;
 
 		const addDays = (dateStr: string, days: number) => {
 			const d = new Date(dateStr);
@@ -101,7 +116,10 @@ export const POST: APIRoute = async ({ request }) => {
 				status: "pending",
 				estimated_delivery_start,
 				estimated_delivery_end,
-				order_number
+				order_number,
+				promo_code_id: promo?.id || null,
+				promo_code: promo?.code || null,
+				promo_discount_amount: pricing.promoDiscountAmount
 			})
 			.select("id")
 			.single();
@@ -129,8 +147,34 @@ export const POST: APIRoute = async ({ request }) => {
 
 		const { error: flavorsInsertError } = await adminClient.from("order_flavors").insert(flavorRows);
 		if (flavorsInsertError) {
+			await adminClient.from("orders").delete().eq("id", order_id);
 			return new Response(JSON.stringify({ success: false, error: flavorsInsertError.message }), { status: 400 });
 		}
+
+		if (promo?.id) {
+			const { error: promoUsageError } = await adminClient
+				.from("promo_code_usages")
+				.insert({
+					promo_code_id: promo.id,
+					user_id: user.id,
+					order_id,
+					discount_amount: pricing.promoDiscountAmount
+				});
+
+			if (promoUsageError) {
+				await adminClient.from("order_flavors").delete().eq("order_id", order_id);
+				await adminClient.from("orders").delete().eq("id", order_id);
+				return new Response(JSON.stringify({ success: false, error: promoUsageError.message }), { status: 400 });
+			}
+		}
+
+		await createNotification(adminClient, {
+			userId: user.id,
+			type: "order_created",
+			title: "Commande enregistree",
+			message: `Ta commande ${order_number} a bien ete creee pour ${cartons} carton(s).`,
+			link: "/profile"
+		});
 
 		const firstName =
 			(typeof user.user_metadata?.first_name === "string" && user.user_metadata.first_name) ||

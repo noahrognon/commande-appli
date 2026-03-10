@@ -1,9 +1,9 @@
 import type { APIRoute } from "astro";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
-import { getAdminFromRequest } from "../../../lib/adminAuth";
+import { requireAdminRequest } from "../../../lib/adminGuard";
 
 export const POST: APIRoute = async ({ request }) => {
-	const admin = await getAdminFromRequest(request);
+	const admin = await requireAdminRequest(request);
 	if (!admin) {
 		return new Response("Non autorise.", { status: 401 });
 	}

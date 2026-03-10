@@ -1,5 +1,8 @@
 import type { APIRoute } from "astro";
 import { createClient } from "@supabase/supabase-js";
+import { createNotification } from "../../lib/notifications";
+import { computeOrderPricing } from "../../lib/orderPricing";
+import { getPromoCodeById } from "../../lib/promoCodes";
 
 const SUPABASE_URL = import.meta.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -52,7 +55,7 @@ export const POST: APIRoute = async ({ request }) => {
 
 		const { data: order, error: orderError } = await adminClient
 			.from("orders")
-			.select("id, user_id, preorder_id")
+			.select("id, user_id, preorder_id, order_number, promo_code_id, promo_code")
 			.eq("id", order_id)
 			.single();
 
@@ -73,20 +76,51 @@ export const POST: APIRoute = async ({ request }) => {
 			return new Response(JSON.stringify({ success: false, error: "Precommande fermee." }), { status: 400 });
 		}
 
-		let discountPct = 0;
-		if (cartons >= 10) discountPct = 10;
-		else if (cartons >= 5) discountPct = 7;
-		else if (cartons >= 3) discountPct = 4;
-		const total = Math.round(cartons * 75 * (1 - discountPct / 100));
+		const promo = order.promo_code_id
+			? await getPromoCodeById(adminClient, order.promo_code_id)
+			: null;
+		const pricing = computeOrderPricing({
+			cartons,
+			promo:
+				promo && cartons >= Number(promo.min_cartons || 1) ? promo : null
+		});
+		const total = pricing.total;
+		const promoStillApplied =
+			Boolean(promo) && cartons >= Number(promo?.min_cartons || 1);
 
 		const { error: updateError } = await adminClient
 			.from("orders")
-			.update({ cartons, total })
+			.update({
+				cartons,
+				total,
+				promo_code_id: promoStillApplied ? promo?.id : null,
+				promo_code: promoStillApplied ? order.promo_code : null,
+				promo_discount_amount: pricing.promoDiscountAmount
+			})
 			.eq("id", order_id);
 
 		if (updateError) {
 			return new Response(JSON.stringify({ success: false, error: updateError.message }), { status: 400 });
 		}
+
+		if (promo?.id) {
+			if (promoStillApplied) {
+				await adminClient
+					.from("promo_code_usages")
+					.update({ discount_amount: pricing.promoDiscountAmount })
+					.eq("order_id", order_id);
+			} else {
+				await adminClient.from("promo_code_usages").delete().eq("order_id", order_id);
+			}
+		}
+
+		await createNotification(adminClient, {
+			userId: user.id,
+			type: "order_updated",
+			title: "Commande mise a jour",
+			message: `Ta commande ${order.order_number || order.id} est maintenant a ${cartons} carton(s).`,
+			link: "/profile"
+		});
 
 		return new Response(JSON.stringify({ success: true, total }), { status: 200 });
 	} catch (e: any) {

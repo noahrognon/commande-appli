@@ -2,6 +2,7 @@
 import Layout from "../../layouts/Layout.astro";
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
 import { requireAdmin } from "../../lib/adminAuth";
+import { fetchUsersMap } from "../../lib/userLookup";
 
 export const prerender = false;
 
@@ -41,12 +42,13 @@ const { data: preordersData } = await supabaseAdmin
 	.from("preorders")
 	.select("id, name, start_date, end_date, status")
 	.order("end_date", { ascending: false });
+const { data: promoCodesData } = await supabaseAdmin
+	.from("promo_codes")
+	.select("id, code, type, value, min_cartons, max_uses, is_active, starts_at, ends_at, created_at")
+	.order("created_at", { ascending: false });
 
-const { data: usersData } = await supabaseAdmin.auth.admin.listUsers({
-	page: 1,
-	perPage: 1000,
-});
-const users = usersData?.users ?? [];
+const users = Array.from((await fetchUsersMap(supabaseAdmin)).values());
+const promoCodes = promoCodesData ?? [];
 
 const toNumber = (value: unknown) => {
 	const parsed = Number(value ?? 0);
@@ -67,8 +69,8 @@ const userMap = new Map(
 		user.id,
 		{
 			email: user.email || "",
-			firstName: (user.user_metadata?.first_name as string) || "",
-			lastName: (user.user_metadata?.last_name as string) || "",
+			firstName: user.firstName || "",
+			lastName: user.lastName || "",
 		},
 	]),
 );
@@ -130,6 +132,38 @@ const marginPercent = revenueMonth > 0 ? (marginMonth / revenueMonth) * 100 : 0;
 
 const activeClients = new Set(ordersThisMonth.map((order) => order.user_id))
 	.size;
+const totalRegisteredUsers = users.length;
+const uniqueBuyingUsers = new Set(orders.map((order) => order.user_id));
+const recurringClients = Array.from(
+	orders.reduce((map, order) => {
+		map.set(order.user_id, (map.get(order.user_id) ?? 0) + 1);
+		return map;
+	}, new Map<string, number>()),
+).filter(([, count]) => count >= 2).length;
+const averageBasketMonth =
+	ordersThisMonth.length > 0 ? revenueMonth / ordersThisMonth.length : 0;
+const conversionRateMonth =
+	totalRegisteredUsers > 0 ? (activeClients / totalRegisteredUsers) * 100 : 0;
+
+const monthlyStats = Array.from({ length: 6 }, (_, index) => {
+	const date = new Date(now.getFullYear(), now.getMonth() - (5 - index), 1);
+	const nextDate = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+	const monthOrders = orders.filter(
+		(order) => order.createdAt >= date && order.createdAt < nextDate,
+	);
+	const revenue = monthOrders.reduce((sum, order) => sum + order.total, 0);
+	const clients = new Set(monthOrders.map((order) => order.user_id)).size;
+	return {
+		label: date.toLocaleDateString("fr-FR", { month: "short" }),
+		revenue,
+		clients,
+	};
+});
+
+const maxMonthlyRevenue = Math.max(
+	1,
+	...monthlyStats.map((stat) => stat.revenue),
+);
 
 const dayNames = ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"];
 const dailyStats = Array.from({ length: 7 }, (_, index) => {
@@ -436,7 +470,46 @@ const formatNumber = (value: number) => Math.round(value).toString();
 							</span>
 						</div>
 						<p class="stat-value">{formatNumber(activeClients)}</p>
-						<p class="stat-sub">Ce mois-ci</p>
+						<p class="stat-sub">
+							{formatNumber(totalRegisteredUsers)} comptes inscrits
+						</p>
+					</div>
+				</div>
+
+				<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+					<div class="stat-card">
+						<p class="stat-label text-slate-600">Panier moyen</p>
+						<p class="stat-value">
+							{formatNumber(averageBasketMonth)} EUR
+						</p>
+						<p class="stat-sub">Par commande ce mois-ci</p>
+					</div>
+					<div class="stat-card">
+						<p class="stat-label text-slate-600">Conversion</p>
+						<p class="stat-value">
+							{conversionRateMonth.toFixed(1)}%
+						</p>
+						<p class="stat-sub">
+							Clients du mois / comptes inscrits
+						</p>
+					</div>
+					<div class="stat-card">
+						<p class="stat-label text-slate-600">
+							Clients recurrents
+						</p>
+						<p class="stat-value">{formatNumber(recurringClients)}</p>
+						<p class="stat-sub">2 commandes ou plus</p>
+					</div>
+					<div class="stat-card">
+						<p class="stat-label text-slate-600">
+							Commandes du mois
+						</p>
+						<p class="stat-value">
+							{formatNumber(ordersThisMonth.length)}
+						</p>
+						<p class="stat-sub">
+							{formatNumber(uniqueBuyingUsers.size)} clients au total
+						</p>
 					</div>
 				</div>
 
@@ -548,6 +621,240 @@ const formatNumber = (value: number) => Math.round(value).toString();
 					<div class="flex items-center justify-between">
 						<div>
 							<p class="text-sm font-semibold text-slate-800">
+								CA par mois
+							</p>
+							<p class="text-xs text-slate-500">
+								Vue business sur les 6 derniers mois
+							</p>
+						</div>
+						<span
+							class="rounded-full bg-[#eef2ff] px-3 py-1 text-xs font-semibold text-[#5a5dff]"
+						>
+							6 mois
+						</span>
+					</div>
+					<div class="mt-6 grid gap-4 lg:grid-cols-[1.8fr_1fr]">
+						<div class="flex h-52 items-end gap-3">
+							{
+								monthlyStats.map((stat) => (
+									<div class="flex flex-1 flex-col items-center gap-3">
+										<div class="w-full rounded-[1.25rem] bg-slate-100/80 p-2">
+											<div
+												class="w-full rounded-[1rem] bg-gradient-to-t from-[#315eff] via-[#7a4bff] to-[#ff77c8] shadow-lg shadow-indigo-500/25"
+												style={`height: ${Math.max(12, (stat.revenue / maxMonthlyRevenue) * 160)}px`}
+											/>
+										</div>
+										<div class="text-center text-xs text-slate-500">
+											<p class="font-semibold text-slate-700">
+												{stat.label}
+											</p>
+											<p>{formatNumber(stat.revenue)} EUR</p>
+										</div>
+									</div>
+								))
+							}
+						</div>
+						<div class="space-y-3">
+							{
+								monthlyStats
+									.slice()
+									.reverse()
+									.slice(0, 3)
+									.map((stat) => (
+										<div class="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+											<p class="text-xs uppercase tracking-[0.2em] text-slate-400">
+												{stat.label}
+											</p>
+											<p class="mt-1 text-lg font-semibold text-slate-900">
+												{formatNumber(stat.revenue)} EUR
+											</p>
+											<p class="text-xs text-slate-500">
+												{formatNumber(stat.clients)} clients actifs
+											</p>
+										</div>
+									))
+							}
+						</div>
+					</div>
+				</div>
+
+				<div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+					<div
+						class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50"
+					>
+						<div class="flex flex-col gap-2">
+							<p class="text-sm font-semibold text-slate-900">
+								Ajouter un code promo
+							</p>
+							<p class="text-xs text-slate-500">
+								Creation rapide d'une offre commerciale depuis l'admin.
+							</p>
+						</div>
+						<form class="mt-6 grid gap-4 md:grid-cols-2" data-promo-form>
+							<label class="space-y-2 text-sm text-slate-600">
+								<span class="font-medium text-slate-800">Code</span>
+								<input
+									type="text"
+									name="code"
+									required
+									class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 uppercase outline-none transition focus:border-[#7a4bff]"
+									placeholder="BIENVENUE5"
+								/>
+							</label>
+							<label class="space-y-2 text-sm text-slate-600">
+								<span class="font-medium text-slate-800">Type</span>
+								<select
+									name="type"
+									class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-[#7a4bff]"
+								>
+									<option value="fixed">Montant fixe</option>
+									<option value="percent">Pourcentage</option>
+								</select>
+							</label>
+							<label class="space-y-2 text-sm text-slate-600">
+								<span class="font-medium text-slate-800">Valeur</span>
+								<input
+									type="number"
+									name="value"
+									min="1"
+									step="1"
+									required
+									class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-[#7a4bff]"
+									placeholder="5"
+								/>
+							</label>
+							<label class="space-y-2 text-sm text-slate-600">
+								<span class="font-medium text-slate-800">
+									Cartons minimum
+								</span>
+								<input
+									type="number"
+									name="min_cartons"
+									min="1"
+									step="1"
+									value="1"
+									class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-[#7a4bff]"
+								/>
+							</label>
+							<label class="space-y-2 text-sm text-slate-600">
+								<span class="font-medium text-slate-800">
+									Limite globale
+								</span>
+								<input
+									type="number"
+									name="max_uses"
+									min="1"
+									step="1"
+									class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-[#7a4bff]"
+									placeholder="Optionnel"
+								/>
+							</label>
+							<label class="space-y-2 text-sm text-slate-600">
+								<span class="font-medium text-slate-800">
+									Debut
+								</span>
+								<input
+									type="datetime-local"
+									name="starts_at"
+									class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-[#7a4bff]"
+								/>
+							</label>
+							<label class="space-y-2 text-sm text-slate-600">
+								<span class="font-medium text-slate-800">Fin</span>
+								<input
+									type="datetime-local"
+									name="ends_at"
+									class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-[#7a4bff]"
+								/>
+							</label>
+							<label class="flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700">
+								<input
+									type="checkbox"
+									name="is_active"
+									checked
+									class="accent-[#7a4bff]"
+								/>
+								<span>Activer des la creation</span>
+							</label>
+							<div class="flex items-end">
+								<button
+									type="submit"
+									class="action-button action-primary w-full justify-center"
+								>
+									Ajouter le code promo
+								</button>
+							</div>
+						</form>
+						<p class="mt-3 text-xs text-slate-500" data-promo-form-status></p>
+					</div>
+
+					<div
+						class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50"
+					>
+						<div class="flex items-center justify-between">
+							<div>
+								<p class="text-sm font-semibold text-slate-900">
+									Codes promo actifs
+								</p>
+								<p class="text-xs text-slate-500">
+									Activation rapide des offres existantes
+								</p>
+							</div>
+							<span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+								{formatNumber(promoCodes.length)} codes
+							</span>
+						</div>
+						<div class="mt-6 space-y-3">
+							{promoCodes.map((promo) => (
+								<div class="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
+									<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+										<div>
+											<p class="text-sm font-semibold text-slate-900">
+												{promo.code}
+											</p>
+											<p class="text-xs text-slate-500">
+												{promo.type === "percent"
+													? `${formatNumber(Number(promo.value || 0))}%`
+													: `${formatNumber(Number(promo.value || 0))} EUR`} • min {formatNumber(Number(promo.min_cartons || 1))} carton(s)
+											</p>
+											<p class="text-xs text-slate-400">
+												{promo.max_uses
+													? `Limite ${promo.max_uses}`
+													: "Sans limite"}
+											</p>
+										</div>
+										<div class="flex items-center gap-2">
+											<span class={`badge ${promo.is_active ? "badge-success" : "badge-error"}`}>
+												{promo.is_active ? "Actif" : "Inactif"}
+											</span>
+											<button
+												type="button"
+												class="filter-button"
+												data-action="toggle-promo-status"
+												data-promo-id={promo.id}
+												data-promo-active={promo.is_active ? "true" : "false"}
+											>
+												{promo.is_active ? "Desactiver" : "Activer"}
+											</button>
+										</div>
+									</div>
+								</div>
+							))}
+							{promoCodes.length === 0 && (
+								<p class="text-sm text-slate-500">
+									Aucun code promo cree pour le moment.
+								</p>
+							)}
+						</div>
+					</div>
+				</div>
+
+				<div
+					class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50"
+				>
+					<div class="flex items-center justify-between">
+						<div>
+							<p class="text-sm font-semibold text-slate-800">
 								Top 10 des gouts demandes
 							</p>
 							<p class="text-xs text-slate-500">
@@ -646,6 +953,12 @@ const formatNumber = (value: number) => Math.round(value).toString();
 							/>
 						</div>
 						<div class="flex flex-wrap gap-2">
+							<a
+								href="/api/admin/export-orders.csv"
+								class="filter-button inline-flex items-center"
+							>
+								Exporter CSV
+							</a>
 							<button
 								class="filter-button filter-active"
 								data-status-filter="all"
@@ -963,6 +1276,15 @@ const formatNumber = (value: number) => Math.round(value).toString();
 				<div class="flex flex-wrap gap-3">
 					<button
 						type="button"
+						class="action-button action-primary"
+						data-action="send-open-email"
+						data-preorder-id={openPreorder?.id || ""}
+						disabled={!openPreorder}
+					>
+						Annoncer l'ouverture par email
+					</button>
+					<button
+						type="button"
 						class="action-button action-danger"
 						data-action="close-preorder"
 						disabled={!openPreorder}
@@ -997,6 +1319,163 @@ const formatNumber = (value: number) => Math.round(value).toString();
 					</button>
 				</div>
 				<p class="text-xs text-slate-500" data-admin-email-status></p>
+
+				<div
+					class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50"
+				>
+					<div class="flex flex-col gap-2">
+						<p class="text-sm font-semibold text-slate-900">
+							Creer une precommande
+						</p>
+						<p class="text-xs text-slate-500">
+							Nom, dates et statut initial pour lancer la prochaine
+							fenetre.
+						</p>
+					</div>
+					<form class="mt-6 grid gap-4 lg:grid-cols-2" data-preorder-form>
+						<label class="space-y-2 text-sm text-slate-600 lg:col-span-2">
+							<span class="font-medium text-slate-800">Nom</span>
+							<input
+								type="text"
+								name="name"
+								required
+								class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-[#7a4bff]"
+								placeholder="Precommande Avril 2026"
+							/>
+						</label>
+						<label class="space-y-2 text-sm text-slate-600">
+							<span class="font-medium text-slate-800">
+								Date de debut
+							</span>
+							<input
+								type="datetime-local"
+								name="start_date"
+								required
+								class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-[#7a4bff]"
+							/>
+						</label>
+						<label class="space-y-2 text-sm text-slate-600">
+							<span class="font-medium text-slate-800">Date de fin</span>
+							<input
+								type="datetime-local"
+								name="end_date"
+								required
+								class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-[#7a4bff]"
+							/>
+						</label>
+						<label class="space-y-2 text-sm text-slate-600">
+							<span class="font-medium text-slate-800">
+								Statut initial
+							</span>
+							<select
+								name="status"
+								class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none transition focus:border-[#7a4bff]"
+							>
+								<option value="planned">Planifiee</option>
+								<option value="open">Ouverte</option>
+								<option value="closed">Fermee</option>
+							</select>
+						</label>
+						<div class="flex items-end">
+							<button
+								type="submit"
+								class="action-button action-primary w-full justify-center"
+							>
+								Creer la precommande
+							</button>
+						</div>
+					</form>
+					<p class="mt-3 text-xs text-slate-500" data-preorder-form-status></p>
+				</div>
+
+				<div
+					class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50"
+				>
+					<div class="flex items-center justify-between">
+						<div>
+							<p class="text-sm font-semibold text-slate-900">
+								Calendrier des precommandes
+							</p>
+							<p class="text-xs text-slate-500">
+								Ouvrir, fermer ou prevoir les prochaines fenetres.
+							</p>
+						</div>
+						<span class="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">
+							{formatNumber((preordersData ?? []).length)} fenetres
+						</span>
+					</div>
+					<div class="mt-6 space-y-3">
+						{(preordersData ?? []).map((preorder) => {
+							const statusLabel =
+								preorder.status === "open"
+									? "Ouverte"
+									: preorder.status === "planned"
+										? "Planifiee"
+										: "Fermee";
+							const badgeClass =
+								preorder.status === "open"
+									? "badge-info"
+									: preorder.status === "planned"
+										? "badge-warning"
+										: "badge-error";
+							return (
+								<div class="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
+									<div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+										<div>
+											<p class="text-sm font-semibold text-slate-800">
+												{preorder.name}
+											</p>
+											<p class="text-xs text-slate-500">
+												{formatDate(preorder.start_date)} au {formatDate(preorder.end_date)}
+											</p>
+										</div>
+										<div class="flex flex-wrap items-center gap-2">
+											<span class={`badge ${badgeClass}`}>{statusLabel}</span>
+											{preorder.status !== "open" && (
+												<button
+													type="button"
+													class="filter-button"
+													data-action="set-preorder-status"
+													data-preorder-id={preorder.id}
+													data-next-status="open"
+												>
+													Ouvrir
+												</button>
+											)}
+											{preorder.status !== "planned" && (
+												<button
+													type="button"
+													class="filter-button"
+													data-action="set-preorder-status"
+													data-preorder-id={preorder.id}
+													data-next-status="planned"
+												>
+													Planifier
+												</button>
+											)}
+											{preorder.status !== "closed" && (
+												<button
+													type="button"
+													class="filter-button"
+													data-action="set-preorder-status"
+													data-preorder-id={preorder.id}
+													data-next-status="closed"
+												>
+													Fermer
+												</button>
+											)}
+										</div>
+									</div>
+								</div>
+							);
+						})}
+						{(preordersData ?? []).length === 0 && (
+							<p class="text-sm text-slate-500">
+								Aucune precommande enregistree pour le moment.
+							</p>
+						)}
+					</div>
+				</div>
 
 				<div
 					class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50"
@@ -1080,6 +1559,12 @@ const formatNumber = (value: number) => Math.round(value).toString();
 		document.querySelectorAll("[data-order-card]"),
 	);
 	const emailStatus = document.querySelector("[data-admin-email-status]");
+	const preorderForm = document.querySelector("[data-preorder-form]");
+	const preorderFormStatus = document.querySelector(
+		"[data-preorder-form-status]",
+	);
+	const promoForm = document.querySelector("[data-promo-form]");
+	const promoFormStatus = document.querySelector("[data-promo-form-status]");
 	let activeStatus = "all";
 
 	const applyFilters = () => {
@@ -1106,6 +1591,103 @@ const formatNumber = (value: number) => Math.round(value).toString();
 
 	if (searchInput) {
 		searchInput.addEventListener("input", applyFilters);
+	}
+
+	if (preorderForm instanceof HTMLFormElement) {
+		preorderForm.addEventListener("submit", async (event) => {
+			event.preventDefault();
+			const formData = new FormData(preorderForm);
+			const submitButton = preorderForm.querySelector(
+				"button[type='submit']",
+			);
+			if (submitButton instanceof HTMLButtonElement) {
+				submitButton.disabled = true;
+				submitButton.textContent = "Creation...";
+			}
+			if (preorderFormStatus) {
+				preorderFormStatus.textContent =
+					"Creation de la precommande en cours...";
+			}
+			try {
+				const response = await fetch("/api/admin/create-preorder", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						name: formData.get("name"),
+						start_date: formData.get("start_date"),
+						end_date: formData.get("end_date"),
+						status: formData.get("status"),
+					}),
+				});
+				const result = await response.json();
+				if (!response.ok) {
+					throw new Error(result?.error || result?.message || "Erreur");
+				}
+				if (preorderFormStatus) {
+					preorderFormStatus.textContent =
+						"Precommande creee. Rechargement...";
+				}
+				window.location.reload();
+			} catch (error) {
+				if (preorderFormStatus) {
+					preorderFormStatus.textContent =
+						"Impossible de creer la precommande.";
+				}
+				console.error(error);
+				if (submitButton instanceof HTMLButtonElement) {
+					submitButton.disabled = false;
+					submitButton.textContent = "Creer la precommande";
+				}
+			}
+		});
+	}
+
+	if (promoForm instanceof HTMLFormElement) {
+		promoForm.addEventListener("submit", async (event) => {
+			event.preventDefault();
+			const formData = new FormData(promoForm);
+			const submitButton = promoForm.querySelector("button[type='submit']");
+			if (submitButton instanceof HTMLButtonElement) {
+				submitButton.disabled = true;
+				submitButton.textContent = "Creation...";
+			}
+			if (promoFormStatus) {
+				promoFormStatus.textContent = "Creation du code promo en cours...";
+			}
+			try {
+				const response = await fetch("/api/admin/create-promo-code", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						code: formData.get("code"),
+						type: formData.get("type"),
+						value: formData.get("value"),
+						min_cartons: formData.get("min_cartons"),
+						max_uses: formData.get("max_uses"),
+						starts_at: formData.get("starts_at"),
+						ends_at: formData.get("ends_at"),
+						is_active: formData.get("is_active") === "on"
+					})
+				});
+				const result = await response.json();
+				if (!response.ok) {
+					throw new Error(result?.error || "Erreur");
+				}
+				if (promoFormStatus) {
+					promoFormStatus.textContent = `Code ${result?.promo?.code || ""} cree.`;
+				}
+				window.location.reload();
+			} catch (error) {
+				if (promoFormStatus) {
+					promoFormStatus.textContent = "Impossible de creer le code promo.";
+				}
+				console.error(error);
+				if (submitButton instanceof HTMLButtonElement) {
+					submitButton.disabled = false;
+					submitButton.textContent = "Ajouter le code promo";
+				}
+			}
+		});
 	}
 
 	document.addEventListener("click", async (event) => {
@@ -1236,6 +1818,103 @@ const formatNumber = (value: number) => Math.round(value).toString();
 				stockButton.removeAttribute("disabled");
 				stockButton.textContent = "Stock recu / pret a livrer";
 			}
+		}
+
+		const openEmailButton = target.closest("[data-action='send-open-email']");
+		if (openEmailButton) {
+			const preorderId =
+				openEmailButton.getAttribute("data-preorder-id") || "";
+			if (!preorderId) return;
+			openEmailButton.setAttribute("disabled", "true");
+			openEmailButton.textContent = "Envoi...";
+			if (emailStatus) {
+				emailStatus.textContent =
+					"Envoi de l'annonce d'ouverture aux clients...";
+			}
+			try {
+				const response = await fetch("/api/admin/preorder/send-open-emails", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ preorderId }),
+				});
+				const result = await response.json();
+				if (!response.ok) throw new Error(result?.error || "Erreur");
+				if (emailStatus) {
+					emailStatus.textContent = `Annonce envoyee a ${result?.sent ?? 0} clients.`;
+				}
+			} catch (error) {
+				if (emailStatus) {
+					emailStatus.textContent =
+						"Erreur lors de l'envoi du mail d'ouverture.";
+				}
+				console.error(error);
+			} finally {
+				openEmailButton.removeAttribute("disabled");
+				openEmailButton.textContent = "Annoncer l'ouverture par email";
+			}
+			return;
+		}
+
+		const preorderStatusButton = target.closest(
+			"[data-action='set-preorder-status']",
+		);
+		if (preorderStatusButton) {
+			const preorderId =
+				preorderStatusButton.getAttribute("data-preorder-id") || "";
+			const status =
+				preorderStatusButton.getAttribute("data-next-status") || "";
+			if (!preorderId || !status) return;
+			preorderStatusButton.setAttribute("disabled", "true");
+			const initialText = preorderStatusButton.textContent || "";
+			preorderStatusButton.textContent = "Mise a jour...";
+			try {
+				const response = await fetch("/api/admin/update-preorder-status", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ preorderId, status }),
+				});
+				if (!response.ok) {
+					throw new Error(await response.text());
+				}
+				window.location.reload();
+			} catch (error) {
+				preorderStatusButton.removeAttribute("disabled");
+				preorderStatusButton.textContent = initialText;
+				console.error(error);
+			}
+			return;
+		}
+
+		const togglePromoButton = target.closest(
+			"[data-action='toggle-promo-status']",
+		);
+		if (togglePromoButton) {
+			const promoId = togglePromoButton.getAttribute("data-promo-id") || "";
+			const isActive =
+				togglePromoButton.getAttribute("data-promo-active") === "true";
+			if (!promoId) return;
+			togglePromoButton.setAttribute("disabled", "true");
+			const initialText = togglePromoButton.textContent || "";
+			togglePromoButton.textContent = "Mise a jour...";
+			try {
+				const response = await fetch("/api/admin/update-promo-code", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						promoId,
+						is_active: !isActive
+					})
+				});
+				if (!response.ok) {
+					throw new Error(await response.text());
+				}
+				window.location.reload();
+			} catch (error) {
+				togglePromoButton.removeAttribute("disabled");
+				togglePromoButton.textContent = initialText;
+				console.error(error);
+			}
+			return;
 		}
 	});
 

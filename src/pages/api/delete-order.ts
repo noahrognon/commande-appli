@@ -1,5 +1,6 @@
 import type { APIRoute } from "astro";
 import { createClient } from "@supabase/supabase-js";
+import { createNotification } from "../../lib/notifications";
 
 const SUPABASE_URL = import.meta.env.SUPABASE_URL;
 const SUPABASE_SERVICE_ROLE_KEY = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -48,7 +49,7 @@ export const POST: APIRoute = async ({ request }) => {
 
 		const { data: order, error: orderError } = await adminClient
 			.from("orders")
-			.select("id, user_id, preorder_id")
+			.select("id, user_id, preorder_id, order_number")
 			.eq("id", order_id)
 			.single();
 
@@ -69,11 +70,20 @@ export const POST: APIRoute = async ({ request }) => {
 			return new Response(JSON.stringify({ success: false, error: "Precommande fermee." }), { status: 400 });
 		}
 
+		await adminClient.from("promo_code_usages").delete().eq("order_id", order_id);
 		await adminClient.from("order_flavors").delete().eq("order_id", order_id);
 		const { error: deleteError } = await adminClient.from("orders").delete().eq("id", order_id);
 		if (deleteError) {
 			return new Response(JSON.stringify({ success: false, error: deleteError.message }), { status: 400 });
 		}
+
+		await createNotification(adminClient, {
+			userId: user.id,
+			type: "order_deleted",
+			title: "Commande supprimee",
+			message: `Ta commande ${order.order_number || order.id} a ete retiree tant que la precommande etait ouverte.`,
+			link: "/profile"
+		});
 
 		return new Response(JSON.stringify({ success: true }), { status: 200 });
 	} catch (e: any) {

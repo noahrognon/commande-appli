@@ -1,5 +1,6 @@
 ﻿---
 import Layout from "../layouts/Layout.astro";
+import { createClient } from "@supabase/supabase-js";
 import { createServerClient, getUserFromCookies } from "../lib/supabaseServer";
 
 export const prerender = false;
@@ -27,6 +28,42 @@ const { data: flavorsData } = await supabase
 const preorder = preorderData ?? null;
 const flavors = flavorsData ?? [];
 const projectRef = new URL(import.meta.env.SUPABASE_URL).hostname.split(".")[0];
+const SUPABASE_SERVICE_ROLE_KEY = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
+
+let repeatOrderPrefill: {
+	orderId: string;
+	cartons: number;
+	promoCode: string;
+	flavors: { flavor_id: string; quantity: number }[];
+} | null = null;
+
+const repeatOrderId = Astro.url.searchParams.get("repeatOrder");
+if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
+	const adminClient = createClient(import.meta.env.SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+	const { data: repeatOrder } = await adminClient
+		.from("orders")
+		.select("id, user_id, cartons, promo_code")
+		.eq("id", repeatOrderId)
+		.eq("user_id", user.id)
+		.maybeSingle();
+
+	if (repeatOrder) {
+		const { data: repeatFlavors } = await adminClient
+			.from("order_flavors")
+			.select("flavor_id, quantity")
+			.eq("order_id", repeatOrder.id);
+
+		repeatOrderPrefill = {
+			orderId: repeatOrder.id,
+			cartons: Number(repeatOrder.cartons || 1),
+			promoCode: String(repeatOrder.promo_code || ""),
+			flavors: (repeatFlavors ?? []).map((item) => ({
+				flavor_id: item.flavor_id,
+				quantity: Number(item.quantity || 0)
+			}))
+		};
+	}
+}
 ---
 
 <Layout>
@@ -53,6 +90,15 @@ const projectRef = new URL(import.meta.env.SUPABASE_URL).hostname.split(".")[0];
 				data-project-ref={projectRef}
 			>
 				<input type="hidden" name="preorder_id" value={preorder?.id || ""} />
+
+				{repeatOrderPrefill && (
+					<section class="rounded-[20px] border border-indigo-100 bg-indigo-50/90 p-4 text-sm text-slate-700 shadow-sm">
+						<p class="font-semibold text-slate-900">Commande pre-remplie</p>
+						<p class="mt-1">
+							On a repris les cartons et les gouts de ta commande precedente pour te faire gagner du temps.
+						</p>
+					</section>
+				)}
 
 				<section class="rounded-[20px] bg-white/85 p-5 shadow-lg ring-1 ring-slate-100 backdrop-blur">
 					<p class="text-sm font-semibold text-slate-900">Quantite de cartons</p>
@@ -82,11 +128,40 @@ const projectRef = new URL(import.meta.env.SUPABASE_URL).hostname.split(".")[0];
 							<span>Remise</span>
 							<span data-discount>0%</span>
 						</div>
+						<div class="hidden justify-between" data-promo-row>
+							<span data-promo-label>Code promo</span>
+							<span data-promo-amount>-0 EUR</span>
+						</div>
 						<div class="flex justify-between text-base font-semibold text-slate-900">
 							<span>Total</span>
 							<span data-total>75 EUR</span>
 						</div>
 					</div>
+				</section>
+
+				<section class="rounded-[20px] bg-white/85 p-5 shadow-lg ring-1 ring-slate-100 backdrop-blur">
+					<div class="flex items-center justify-between gap-3">
+						<div>
+							<p class="text-sm font-semibold text-slate-900">Code promo</p>
+							<p class="text-xs text-slate-500">Ajoute une remise supplementaire si un code est actif.</p>
+						</div>
+					</div>
+					<div class="mt-4 flex flex-col gap-3 sm:flex-row">
+						<input
+							type="text"
+							id="promo-code-input"
+							placeholder="Ex: BIENVENUE5"
+							class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold uppercase tracking-[0.15em] text-slate-800 outline-none transition focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100"
+						/>
+						<button
+							type="button"
+							id="apply-promo-btn"
+							class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 shadow-sm transition hover:border-slate-300"
+						>
+							Appliquer
+						</button>
+					</div>
+					<p class="mt-3 text-xs text-slate-500" id="promo-feedback"></p>
 				</section>
 
 				<section class="rounded-[20px] bg-white/85 p-5 shadow-lg ring-1 ring-slate-100 backdrop-blur">
@@ -167,6 +242,10 @@ const projectRef = new URL(import.meta.env.SUPABASE_URL).hostname.split(".")[0];
 		</div>
 	</main>
 
+	<script type="application/json" id="repeat-order-data">
+		{JSON.stringify(repeatOrderPrefill)}
+	</script>
+
 	<script type="module">
 		(() => {
 			console.log("SCRIPT CLIENT OK");
@@ -181,9 +260,11 @@ const projectRef = new URL(import.meta.env.SUPABASE_URL).hostname.split(".")[0];
 			const preorderId = form.getAttribute("data-preorder-id") || "";
 			const preorderEnd = form.getAttribute("data-preorder-end") || "";
 			const projectRef = form.getAttribute("data-project-ref") || "";
+			const repeatOrderDataEl = document.getElementById("repeat-order-data");
 
 			const pricePerCarton = 75;
 			let cartons = 1;
+			let appliedPromo = null;
 			const flavorQuantities = new Map();
 			form.querySelectorAll("[data-flavor-qty]").forEach((el) => {
 				const id = el.getAttribute("data-flavor-qty");
@@ -195,6 +276,35 @@ const projectRef = new URL(import.meta.env.SUPABASE_URL).hostname.split(".")[0];
 			const subtotalEl = form.querySelector("[data-subtotal]");
 			const discountEl = form.querySelector("[data-discount]");
 			const totalEl = form.querySelector("[data-total]");
+			const promoRowEl = form.querySelector("[data-promo-row]");
+			const promoLabelEl = form.querySelector("[data-promo-label]");
+			const promoAmountEl = form.querySelector("[data-promo-amount]");
+			const promoInput = document.getElementById("promo-code-input");
+			const applyPromoBtn = document.getElementById("apply-promo-btn");
+			const promoFeedback = document.getElementById("promo-feedback");
+
+			if (repeatOrderDataEl?.textContent) {
+				try {
+					const parsed = JSON.parse(repeatOrderDataEl.textContent);
+					if (parsed && typeof parsed === "object") {
+						cartons = Math.max(1, Number(parsed.cartons || 1));
+						if (promoInput && parsed.promoCode) {
+							promoInput.value = String(parsed.promoCode);
+						}
+						if (Array.isArray(parsed.flavors)) {
+							parsed.flavors.forEach((item) => {
+								if (!item?.flavor_id) return;
+								const quantity = Math.max(0, Number(item.quantity || 0));
+								flavorQuantities.set(item.flavor_id, quantity);
+								const qtyEl = form.querySelector(`[data-flavor-qty='${item.flavor_id}']`);
+								if (qtyEl) qtyEl.textContent = String(quantity);
+							});
+						}
+					}
+				} catch (error) {
+					console.warn("Impossible de lire la commande a recommander", error);
+				}
+			}
 
 			const renderTotals = () => {
 				const subtotal = cartons * pricePerCarton;
@@ -203,13 +313,38 @@ const projectRef = new URL(import.meta.env.SUPABASE_URL).hostname.split(".")[0];
 				else if (cartons >= 5) discountPct = 7;
 				else if (cartons >= 3) discountPct = 4;
 
-				const total = Math.round(subtotal * (1 - discountPct / 100));
+				const baseTotal = subtotal * (1 - discountPct / 100);
+				let promoAmount = 0;
+				if (appliedPromo) {
+					if (cartons < Number(appliedPromo.min_cartons || 1)) {
+						appliedPromo = null;
+						if (promoFeedback) {
+							promoFeedback.textContent = "Le code promo a ete retire car la quantite minimale n'est plus atteinte.";
+						}
+					} else if (appliedPromo.type === "percent") {
+						promoAmount = baseTotal * (Number(appliedPromo.value || 0) / 100);
+					} else if (appliedPromo.type === "fixed") {
+						promoAmount = Number(appliedPromo.value || 0);
+					}
+				}
+				promoAmount = Math.max(0, Math.min(baseTotal, promoAmount));
+				const total = Math.max(0, Math.round(baseTotal - promoAmount));
 
 				if (cartEl) cartEl.textContent = String(cartons);
 				if (subtotalEl) subtotalEl.textContent = `${subtotal} EUR`;
 				if (discountEl) discountEl.textContent = `${discountPct}%`;
 				if (totalEl) totalEl.textContent = `${total} EUR`;
-				return { subtotal, discountPct, total };
+				if (promoRowEl) {
+					promoRowEl.classList.toggle("hidden", !appliedPromo);
+					promoRowEl.classList.toggle("flex", Boolean(appliedPromo));
+				}
+				if (promoLabelEl) {
+					promoLabelEl.textContent = appliedPromo ? `Code ${appliedPromo.code}` : "Code promo";
+				}
+				if (promoAmountEl) {
+					promoAmountEl.textContent = `-${Math.round(promoAmount)} EUR`;
+				}
+				return { subtotal, discountPct, promoAmount: Math.round(promoAmount), total };
 			};
 
 			const setMessage = (text, type = "error") => {
@@ -303,6 +438,59 @@ const projectRef = new URL(import.meta.env.SUPABASE_URL).hostname.split(".")[0];
 				return d.toISOString();
 			};
 
+			if (applyPromoBtn && promoInput) {
+				applyPromoBtn.addEventListener("click", async () => {
+					const code = promoInput.value.trim().toUpperCase();
+					if (!code) {
+						appliedPromo = null;
+						if (promoFeedback) promoFeedback.textContent = "Entre un code promo pour l'appliquer.";
+						renderTotals();
+						return;
+					}
+
+					applyPromoBtn.setAttribute("disabled", "true");
+					applyPromoBtn.textContent = "Verification...";
+					if (promoFeedback) promoFeedback.textContent = "";
+					try {
+						const response = await fetch("/api/validate-promo-code", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({ code, cartons })
+						});
+						const result = await response.json().catch(() => null);
+						if (!response.ok || !result?.success) {
+							appliedPromo = null;
+							if (promoFeedback) {
+								promoFeedback.textContent = result?.error || "Code promo invalide.";
+							}
+							renderTotals();
+							return;
+						}
+						appliedPromo = {
+							code: result.code,
+							type: result.type,
+							value: Number(result.value || 0),
+							min_cartons: Number(result.min_cartons || 1)
+						};
+						if (promoFeedback) {
+							promoFeedback.textContent = `Code ${result.code} applique avec succes.`;
+						}
+						renderTotals();
+					} catch (error) {
+						appliedPromo = null;
+						if (promoFeedback) promoFeedback.textContent = "Impossible de verifier le code promo.";
+						console.error(error);
+					} finally {
+						applyPromoBtn.removeAttribute("disabled");
+						applyPromoBtn.textContent = "Appliquer";
+					}
+				});
+
+				if (promoInput.value.trim()) {
+					applyPromoBtn.click();
+				}
+			}
+
 			submitBtn.addEventListener("click", async () => {
 				setMessage("");
 				submitBtn.disabled = true;
@@ -375,7 +563,8 @@ const projectRef = new URL(import.meta.env.SUPABASE_URL).hostname.split(".")[0];
 						estimated_delivery_start,
 						estimated_delivery_end,
 						order_number,
-						total
+						total,
+						promo_code: appliedPromo?.code || ""
 					})
 				});
 

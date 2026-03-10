@@ -1,5 +1,6 @@
 ﻿---
 import Layout from "../layouts/Layout.astro";
+import { createClient } from "@supabase/supabase-js";
 import { getUserFromCookies } from "../lib/supabaseServer";
 import PreorderBanner from "../components/PreorderBanner.astro";
 import DashboardNav from "../components/DashboardNav.astro";
@@ -7,8 +8,18 @@ import DashboardNav from "../components/DashboardNav.astro";
 export const prerender = false;
 
 let firstName = "Invite";
+let unreadNotifications = 0;
+let latestNotifications: {
+	id: string;
+	title: string;
+	message: string;
+	link: string | null;
+	is_read: boolean;
+	created_at: string;
+}[] = [];
 
 const user = await getUserFromCookies(Astro.cookies);
+const SUPABASE_SERVICE_ROLE_KEY = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (user) {
     const meta = user.user_metadata || {};
@@ -25,6 +36,26 @@ if (user) {
     } else if (typeof user.email === "string") {
         firstName = user.email.split("@")[0] || firstName;
     }
+
+	if (SUPABASE_SERVICE_ROLE_KEY) {
+		const adminClient = createClient(import.meta.env.SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+		const [{ data: notificationsData }, { count }] = await Promise.all([
+			adminClient
+				.from("notifications")
+				.select("id, title, message, link, is_read, created_at")
+				.eq("user_id", user.id)
+				.order("created_at", { ascending: false })
+				.limit(3),
+			adminClient
+				.from("notifications")
+				.select("id", { count: "exact", head: true })
+				.eq("user_id", user.id)
+				.eq("is_read", false)
+		]);
+
+		latestNotifications = notificationsData ?? [];
+		unreadNotifications = count || 0;
+	}
 }
 ---
 
@@ -86,6 +117,41 @@ if (user) {
 			<section class="rounded-[24px] bg-white/85 p-6 shadow-lg ring-1 ring-slate-100 backdrop-blur sm:p-7">
 				<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 					<div class="space-y-1">
+						<p class="text-sm font-semibold text-slate-900">Centre de notifications</p>
+						<p class="text-sm text-slate-600">
+							{unreadNotifications > 0
+								? `${unreadNotifications} notification(s) recente(s) a lire`
+								: "Aucune alerte en attente"}
+						</p>
+					</div>
+					<a
+						href="/notifications"
+						class="inline-flex items-center rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
+					>
+						Voir tout
+					</a>
+				</div>
+				<div class="mt-4 space-y-3">
+					{latestNotifications.length === 0 && (
+						<div class="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+							Tu recevras ici les infos sur tes commandes et leurs mises a jour.
+						</div>
+					)}
+					{latestNotifications.map((notification) => (
+						<a
+							href={notification.link || "/notifications"}
+							class={`block rounded-2xl border px-4 py-4 transition hover:-translate-y-0.5 ${notification.is_read ? "border-slate-200 bg-slate-50" : "border-indigo-100 bg-indigo-50/80"}`}
+						>
+							<p class="text-sm font-semibold text-slate-900">{notification.title}</p>
+							<p class="mt-1 text-sm text-slate-600">{notification.message}</p>
+						</a>
+					))}
+				</div>
+			</section>
+
+			<section class="rounded-[24px] bg-white/85 p-6 shadow-lg ring-1 ring-slate-100 backdrop-blur sm:p-7">
+				<div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+					<div class="space-y-1">
 						<p class="text-sm font-semibold text-slate-900">Catalogue des goÃ»ts</p>
 						<p class="text-sm text-slate-600">Découvre les saveurs disponibles et passe ta prochaine commande.</p>
 					</div>
@@ -109,5 +175,3 @@ if (user) {
 	</main>
 	<DashboardNav />
 </Layout>
-
-

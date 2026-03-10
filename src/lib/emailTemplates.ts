@@ -12,7 +12,10 @@ const formatDate = (value?: string) => {
 
 const formatName = (name?: string) => (name && name.trim().length > 0 ? name.trim() : "client");
 
-const link = (path: string) => (siteUrl ? `${siteUrl}${path}` : path);
+const link = (path: string) => {
+	if (/^https?:\/\//i.test(path)) return path;
+	return siteUrl ? `${siteUrl}${path}` : path;
+};
 
 export const getOrderConfirmationEmail = (params: {
 	firstName?: string;
@@ -40,7 +43,7 @@ export const getOrderConfirmationEmail = (params: {
 	)}</strong></li>
 			</ul>
 			<p>
-				<a href="${link("https://commande.noahrognon.fr/profile")}" style="display:inline-block;padding:10px 16px;background:#4f6fff;color:#fff;border-radius:8px;text-decoration:none;">
+				<a href="${link("/profile")}" style="display:inline-block;padding:10px 16px;background:#4f6fff;color:#fff;border-radius:8px;text-decoration:none;">
 					Voir ma commande
 				</a>
 			</p>
@@ -120,5 +123,33 @@ export const getStockReceivedEmail = (params: { firstName?: string; preorderName
 		</div>
 	`;
 	const text = `Bonjour ${name}. Stock recu pour ${params.preorderName}. Nous organisons les remises tres bientot.`;
+	return { subject, html, text };
+};
+
+export const getPreorderOpenAnnouncementEmail = (params: {
+	firstName?: string;
+	preorderName: string;
+	endDate?: string;
+}) => {
+	const name = formatName(params.firstName);
+	const subject = `Precommande ouverte: ${params.preorderName}`;
+	const html = `
+		<div style="font-family: Arial, sans-serif; color:#111827;">
+			<h2>Bonjour ${name}</h2>
+			<p>La nouvelle precommande <strong>${params.preorderName}</strong> est maintenant ouverte.</p>
+			<p>Tu peux deja reserver tes cartons et choisir tes gouts avant la cloture du ${formatDate(
+				params.endDate
+			)}.</p>
+			<p>
+				<a href="${link("/precommande")}" style="display:inline-block;padding:10px 16px;background:#7a4bff;color:#fff;border-radius:8px;text-decoration:none;">
+					Lancer ma precommande
+				</a>
+			</p>
+			<p style="font-size:12px;color:#64748b;">Passe par ton espace pour voir le timer, ton historique et le catalogue complet.</p>
+		</div>
+	`;
+	const text = `Bonjour ${name}. La precommande ${params.preorderName} est ouverte jusqu'au ${formatDate(
+		params.endDate
+	)}. Rendez-vous sur /precommande pour commander.`;
 	return { subject, html, text };
 };

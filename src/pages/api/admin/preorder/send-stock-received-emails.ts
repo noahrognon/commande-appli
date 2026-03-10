@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import { createNotification } from "../../../../lib/notifications";
 import { supabaseAdmin } from "../../../../lib/supabaseAdmin";
 import { requireAdminRequest } from "../../../../lib/adminGuard";
 import { fetchUsersMap } from "../../../../lib/userLookup";
@@ -90,6 +91,13 @@ export const POST: APIRoute = async ({ request }) => {
 				user_id: userId,
 				preorder_id: preorderId,
 				order_id: orderId
+			});
+			await createNotification(supabaseAdmin, {
+				userId,
+				type: "stock_received",
+				title: "Stock recu",
+				message: `Le stock pour ${preorder.name} est arrive. Les livraisons vont pouvoir s'organiser.`,
+				link: "/profile"
 			});
 
 			sent += 1;
