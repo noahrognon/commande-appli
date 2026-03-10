@@ -36,11 +36,11 @@ export const getOrderConfirmationEmail = (params: {
 				<li>Total: <strong>${Math.round(params.total)} EUR</strong></li>
 				<li>Paiement: <strong>${payment}</strong></li>
 				<li>Livraison estimee: <strong>${formatDate(params.estimatedStart)} - ${formatDate(
-					params.estimatedEnd
-				)}</strong></li>
+		params.estimatedEnd
+	)}</strong></li>
 			</ul>
 			<p>
-				<a href="${link("/dashboard")}" style="display:inline-block;padding:10px 16px;background:#4f6fff;color:#fff;border-radius:8px;text-decoration:none;">
+				<a href="${link("https://commande.noahrognon.fr/profile")}" style="display:inline-block;padding:10px 16px;background:#4f6fff;color:#fff;border-radius:8px;text-decoration:none;">
 					Voir ma commande
 				</a>
 			</p>
