@@ -1,4 +1,10 @@
-export const PRICE_PER_CARTON = 75;
+export const PRICE_PER_CARTON = 85;
+export const COST_PER_CARTON = 56;
+export const COMPETITOR_PRICE_PER_CARTON = 150;
+export const SAVINGS_PER_CARTON = Math.max(
+	0,
+	COMPETITOR_PRICE_PER_CARTON - PRICE_PER_CARTON,
+);
 
 export type PromoShape = {
 	id?: string;

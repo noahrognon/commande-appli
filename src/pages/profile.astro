@@ -2,6 +2,7 @@
 import Layout from "../layouts/Layout.astro";
 import DashboardNav from "../components/DashboardNav.astro";
 import { createClient } from "@supabase/supabase-js";
+import { PRICE_PER_CARTON, SAVINGS_PER_CARTON } from "../lib/orderPricing";
 
 export const prerender = false;
 
@@ -55,7 +56,7 @@ if (orderIds.length > 0) {
 const totalOrders = orders.length;
 const totalCartons = orders.reduce((sum, o) => sum + Number(o.cartons || 0), 0);
 const totalSpent = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
-const totalSavings = totalCartons * 75;
+const totalSavings = totalCartons * SAVINGS_PER_CARTON;
 
 const formatDate = (value: string | null) => {
 	if (!value) return "";
@@ -187,7 +188,7 @@ const statusLabel = (status: string | null) => {
 			const rows = document.querySelectorAll("[data-order-row]");
 			if (!rows.length) return;
 
-			const pricePerCarton = 75;
+			const pricePerCarton = Number({PRICE_PER_CARTON});
 			const calcTotal = (cartons) => {
 				let discountPct = 0;
 				if (cartons >= 10) discountPct = 10;

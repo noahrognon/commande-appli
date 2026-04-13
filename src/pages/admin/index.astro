@@ -3,6 +3,7 @@ import Layout from "../../layouts/Layout.astro";
 import { supabaseAdmin } from "../../lib/supabaseAdmin";
 import { requireAdmin } from "../../lib/adminAuth";
 import { fetchUsersMap } from "../../lib/userLookup";
+import { COST_PER_CARTON } from "../../lib/orderPricing";
 
 export const prerender = false;
 
@@ -127,7 +128,10 @@ const cartonsMonth = ordersThisMonth.reduce(
 	(sum, order) => sum + order.cartons,
 	0,
 );
-const marginMonth = cartonsMonth * 31;
+const marginMonth = ordersThisMonth.reduce(
+	(sum, order) => sum + (order.total - order.cartons * COST_PER_CARTON),
+	0,
+);
 const marginPercent = revenueMonth > 0 ? (marginMonth / revenueMonth) * 100 : 0;
 
 const activeClients = new Set(ordersThisMonth.map((order) => order.user_id))
@@ -243,6 +247,7 @@ for (const item of orderFlavors) {
 const openPreorder =
 	(preordersData ?? []).find((preorder) => preorder.status === "open") ??
 	null;
+const defaultOrdersPreorderId = openPreorder?.id ?? "all";
 const openOrderIds = new Set(
 	orders
 		.filter((order) => order.preorder_id === openPreorder?.id)
@@ -953,6 +958,25 @@ const formatNumber = (value: number) => Math.round(value).toString();
 							/>
 						</div>
 						<div class="flex flex-wrap gap-2">
+							<div class="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm">
+								<span>Precommande</span>
+								<select
+									data-preorder-filter
+									class="bg-transparent pr-2 text-sm font-medium text-slate-700 outline-none"
+								>
+									<option value="all" selected={defaultOrdersPreorderId === "all"}>
+										Toutes
+									</option>
+									{(preordersData ?? []).map((preorder) => (
+										<option
+											value={preorder.id}
+											selected={defaultOrdersPreorderId === preorder.id}
+										>
+											{preorder.name} {preorder.status === "open" ? "• ouverte" : ""}
+										</option>
+									))}
+								</select>
+							</div>
 							<a
 								href="/api/admin/export-orders.csv"
 								class="filter-button inline-flex items-center"
@@ -1024,9 +1048,13 @@ const formatNumber = (value: number) => Math.round(value).toString();
 								flavorCountByOrder.get(order.id) ?? 0;
 							const orderFlavorsList =
 								flavorsByOrder.get(order.id) ?? [];
+							const preorderName =
+								preordersData?.find((preorder) => preorder.id === order.preorder_id)?.name ||
+								"Precommande inconnue";
 							const searchValue =
-								`${orderNumber} ${fullName} ${user.email}`.toLowerCase();
-							const margin = order.cartons * 31;
+								`${orderNumber} ${fullName} ${user.email} ${preorderName}`.toLowerCase();
+							const purchaseCost = order.cartons * COST_PER_CARTON;
+							const margin = order.total - purchaseCost;
 							const marginPercent =
 								order.total > 0
 									? (margin / order.total) * 100
@@ -1036,6 +1064,7 @@ const formatNumber = (value: number) => Math.round(value).toString();
 									class="order-card rounded-3xl bg-white/85 p-5 shadow-lg shadow-slate-200/60 ring-1 ring-white/50"
 									data-order-card
 									data-status={order.status}
+									data-preorder-id={order.preorder_id || ""}
 									data-search={searchValue}
 								>
 									<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -1061,6 +1090,9 @@ const formatNumber = (value: number) => Math.round(value).toString();
 												</p>
 												<p class="text-xs text-slate-500">
 													{fullName}
+												</p>
+												<p class="text-xs text-slate-400">
+													{preorderName}
 												</p>
 												<p class="text-xs text-slate-400">
 													{formatDate(
@@ -1141,7 +1173,7 @@ const formatNumber = (value: number) => Math.round(value).toString();
 												</p>
 												<p>
 													{formatNumber(
-														order.cartons * 44,
+														purchaseCost,
 													)}{" "}
 													EUR
 												</p>
@@ -1555,6 +1587,7 @@ const formatNumber = (value: number) => Math.round(value).toString();
 		document.querySelectorAll("[data-status-filter]"),
 	);
 	const searchInput = document.querySelector("[data-order-search]");
+	const preorderFilter = document.querySelector("[data-preorder-filter]");
 	const orderCards = Array.from(
 		document.querySelectorAll("[data-order-card]"),
 	);
@@ -1566,16 +1599,26 @@ const formatNumber = (value: number) => Math.round(value).toString();
 	const promoForm = document.querySelector("[data-promo-form]");
 	const promoFormStatus = document.querySelector("[data-promo-form-status]");
 	let activeStatus = "all";
+	let activePreorder =
+		preorderFilter instanceof HTMLSelectElement
+			? preorderFilter.value || "all"
+			: "all";
 
 	const applyFilters = () => {
 		const query = (searchInput?.value || "").trim().toLowerCase();
 		orderCards.forEach((card) => {
 			const status = card.dataset.status || "";
 			const search = card.dataset.search || "";
+			const preorderId = card.dataset.preorderId || "";
 			const statusMatch =
 				activeStatus === "all" || status === activeStatus;
+			const preorderMatch =
+				activePreorder === "all" || preorderId === activePreorder;
 			const queryMatch = !query || search.includes(query);
-			card.classList.toggle("hidden", !(statusMatch && queryMatch));
+			card.classList.toggle(
+				"hidden",
+				!(statusMatch && preorderMatch && queryMatch),
+			);
 		});
 	};
 
@@ -1592,6 +1635,15 @@ const formatNumber = (value: number) => Math.round(value).toString();
 	if (searchInput) {
 		searchInput.addEventListener("input", applyFilters);
 	}
+
+	if (preorderFilter instanceof HTMLSelectElement) {
+		preorderFilter.addEventListener("change", () => {
+			activePreorder = preorderFilter.value || "all";
+			applyFilters();
+		});
+	}
+
+	applyFilters();
 
 	if (preorderForm instanceof HTMLFormElement) {
 		preorderForm.addEventListener("submit", async (event) => {
