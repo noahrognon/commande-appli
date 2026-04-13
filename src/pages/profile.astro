@@ -71,7 +71,10 @@ const statusLabel = (status: string | null) => {
 ---
 
 <Layout>
-	<main class="min-h-screen bg-gradient-to-b from-white via-[#f4f7ff] to-[#f5e7ff] px-4 pb-32 pt-6 sm:px-6 lg:px-8">
+	<main
+		class="min-h-screen bg-gradient-to-b from-white via-[#f4f7ff] to-[#f5e7ff] px-4 pb-32 pt-6 sm:px-6 lg:px-8"
+		data-price-per-carton={PRICE_PER_CARTON}
+	>
 		<div class="mx-auto flex max-w-4xl flex-col gap-6">
 			<header class="space-y-1">
 				<h1 class="text-2xl font-semibold text-slate-900">Mes commandes</h1>
@@ -186,9 +189,12 @@ const statusLabel = (status: string | null) => {
 	<script type="module">
 		(() => {
 			const rows = document.querySelectorAll("[data-order-row]");
+			const root = document.querySelector("[data-price-per-carton]");
 			if (!rows.length) return;
 
-			const pricePerCarton = Number({PRICE_PER_CARTON});
+			const pricePerCarton = Number(
+				root?.getAttribute("data-price-per-carton") || 0,
+			);
 			const calcTotal = (cartons) => {
 				let discountPct = 0;
 				if (cartons >= 10) discountPct = 10;

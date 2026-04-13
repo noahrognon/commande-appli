@@ -89,6 +89,7 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 				data-preorder-id={preorder?.id || ""}
 				data-preorder-end={preorder?.end_date || ""}
 				data-project-ref={projectRef}
+				data-price-per-carton={PRICE_PER_CARTON}
 			>
 				<input type="hidden" name="preorder_id" value={preorder?.id || ""} />
 
@@ -263,7 +264,9 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 			const projectRef = form.getAttribute("data-project-ref") || "";
 			const repeatOrderDataEl = document.getElementById("repeat-order-data");
 
-			const pricePerCarton = Number({PRICE_PER_CARTON});
+			const pricePerCarton = Number(
+				form.getAttribute("data-price-per-carton") || 0,
+			);
 			let cartons = 1;
 			let appliedPromo = null;
 			const flavorQuantities = new Map();
