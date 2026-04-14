@@ -9,7 +9,9 @@ let success: string | null = null;
 
 if (Astro.request.method === "POST") {
 	const supabase = createServerClient();
-	const contentType = (Astro.request.headers.get("content-type") || "").toLowerCase();
+	const contentType = (
+		Astro.request.headers.get("content-type") || ""
+	).toLowerCase();
 
 	let firstName = "";
 	let lastName = "";
@@ -32,7 +34,10 @@ if (Astro.request.method === "POST") {
 			password = String(formData.get("password") || "");
 			passwordConfirm = String(formData.get("passwordConfirm") || "");
 		} else if (contentType.includes("application/json")) {
-			const body = (await Astro.request.json()) as Record<string, unknown>;
+			const body = (await Astro.request.json()) as Record<
+				string,
+				unknown
+			>;
 			firstName = String(body.firstName || "");
 			lastName = String(body.lastName || "");
 			email = String(body.email || "");
@@ -55,15 +60,15 @@ if (Astro.request.method === "POST") {
 					data: {
 						first_name: firstName,
 						last_name: lastName,
-						phone
-					}
-				}
+						phone,
+					},
+				},
 			});
 
 			if (signUpError) {
 				error = signUpError.message;
 			} else {
-				success = "Compte cree. Verifiez vos emails pour confirmer votre compte.";
+				success = "Compte cree Vous pouvez maintenant vous connecter.";
 			}
 		}
 	} catch {
@@ -73,38 +78,57 @@ if (Astro.request.method === "POST") {
 ---
 
 <Layout>
-	<main class="min-h-screen bg-gradient-to-b from-white via-[#f1f4ff] to-[#f5e7ff] px-4 py-10 sm:px-6 lg:px-8">
+	<main
+		class="min-h-screen bg-gradient-to-b from-white via-[#f1f4ff] to-[#f5e7ff] px-4 py-10 sm:px-6 lg:px-8"
+	>
 		<div class="mx-auto flex max-w-md flex-col gap-6">
-			<a href="/" class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800">
+			<a
+				href="/"
+				class="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800"
+			>
 				<span class="text-lg">←</span>
 				<span>Retour</span>
 			</a>
 
-			<section class="rounded-[28px] bg-white/80 p-6 shadow-xl ring-1 ring-slate-100 backdrop-blur-md sm:p-8">
+			<section
+				class="rounded-[28px] bg-white/80 p-6 shadow-xl ring-1 ring-slate-100 backdrop-blur-md sm:p-8"
+			>
 				<div class="space-y-1 text-center">
-					<p class="text-xl font-semibold bg-gradient-to-r from-[#3d7fff] via-[#9d55ff] to-[#d94bff] bg-clip-text text-transparent">
+					<p
+						class="text-xl font-semibold bg-gradient-to-r from-[#3d7fff] via-[#9d55ff] to-[#d94bff] bg-clip-text text-transparent"
+					>
 						Les Gens Avant L'Argent
 					</p>
-					<h1 class="text-2xl font-semibold text-slate-900">Créer un compte</h1>
-					<p class="text-sm text-slate-600">Rejoignez Les Gens Avant L'Argent dès maintenant</p>
+					<h1 class="text-2xl font-semibold text-slate-900">
+						Créer un compte
+					</h1>
+					<p class="text-sm text-slate-600">
+						Rejoignez Les Gens Avant L'Argent dès maintenant
+					</p>
 				</div>
 
-				{error && (
-					<p class="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
-						{error}
-					</p>
-				)}
-				{success && (
-					<p class="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
-						{success}
-					</p>
-				)}
+				{
+					error && (
+						<p class="mt-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+							{error}
+						</p>
+					)
+				}
+				{
+					success && (
+						<p class="mt-4 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+							{success}
+						</p>
+					)
+				}
 
 				<form method="POST" class="mt-6 space-y-4">
 					<div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
 						<label class="block">
 							<span class="sr-only">Prénom</span>
-							<div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
+							<div
+								class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100"
+							>
 								<input
 									type="text"
 									name="firstName"
@@ -116,7 +140,9 @@ if (Astro.request.method === "POST") {
 						</label>
 						<label class="block">
 							<span class="sr-only">Nom</span>
-							<div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
+							<div
+								class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100"
+							>
 								<input
 									type="text"
 									name="lastName"
@@ -130,7 +156,9 @@ if (Astro.request.method === "POST") {
 
 					<label class="block">
 						<span class="sr-only">Email</span>
-						<div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
+						<div
+							class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100"
+						>
 							<input
 								type="email"
 								name="email"
@@ -143,7 +171,9 @@ if (Astro.request.method === "POST") {
 
 					<label class="block">
 						<span class="sr-only">Téléphone</span>
-						<div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
+						<div
+							class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100"
+						>
 							<input
 								type="tel"
 								name="phone"
@@ -155,7 +185,9 @@ if (Astro.request.method === "POST") {
 
 					<label class="block">
 						<span class="sr-only">Mot de passe</span>
-						<div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
+						<div
+							class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100"
+						>
 							<input
 								type="password"
 								name="password"
@@ -168,7 +200,9 @@ if (Astro.request.method === "POST") {
 
 					<label class="block">
 						<span class="sr-only">Confirmer le mot de passe</span>
-						<div class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100">
+						<div
+							class="flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-3 text-slate-700 shadow-sm focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100"
+						>
 							<input
 								type="password"
 								name="passwordConfirm"
@@ -186,14 +220,17 @@ if (Astro.request.method === "POST") {
 						Créer mon compte
 					</button>
 				</form>
-                <p
+				<p
 					class="font-semibold text-[#2d7dff] hover:text-[#7d4bff] flex text-center justify-center mt-4"
 				>
 					Je certficie a avoir plus de 18 ans
-			</p>
+				</p>
 				<p class="mt-5 text-center text-sm text-slate-600">
 					Déjà un compte ?
-					<a href="/login" class="font-semibold text-[#2d7dff] hover:text-[#7d4bff]">
+					<a
+						href="/login"
+						class="font-semibold text-[#2d7dff] hover:text-[#7d4bff]"
+					>
 						Se connecter
 					</a>
 				</p>

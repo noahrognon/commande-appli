@@ -36,9 +36,9 @@ export const GET: APIRoute = async ({ request }) => {
 	const [{ data: orderFlavors }, { data: flavors }, { data: preorders }] = await Promise.all([
 		orderIds.length > 0
 			? supabaseAdmin
-					.from("order_flavors")
-					.select("order_id, flavor_id, quantity")
-					.in("order_id", orderIds)
+				.from("order_flavors")
+				.select("order_id, flavor_id, quantity")
+				.in("order_id", orderIds)
 			: Promise.resolve({ data: [] as any[] }),
 		supabaseAdmin.from("flavors").select("id, name"),
 		preorderIds.length > 0
