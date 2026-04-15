@@ -139,11 +139,11 @@ export const getPreorderOpenAnnouncementEmail = (params: {
 		<div style="font-family: Arial, sans-serif; color:#111827;">
 			<h2>Bonjour ${name}</h2>
 			<p>La nouvelle precommande <strong>${params.preorderName}</strong> est maintenant ouverte.</p>
-			<p>Tu peux deja reserver tes cartons et choisir tes gouts avant la cloture du ${formatDate(
-				params.endDate
-			)}.</p>
+			<p>Tu peux deja commander tes cartons et choisir tes gouts avant la cloture du ${formatDate(
+		params.endDate
+	)}. La prochaine commande sera prevu debut juillet.</p>
 			<p>
-				<a href="${link("/precommande")}" style="display:inline-block;padding:10px 16px;background:#7a4bff;color:#fff;border-radius:8px;text-decoration:none;">
+				<a href="${link("https://commande.noahrognon.fr/precommande")}" style="display:inline-block;padding:10px 16px;background:#7a4bff;color:#fff;border-radius:8px;text-decoration:none;">
 					Lancer ma precommande
 				</a>
 			</p>
