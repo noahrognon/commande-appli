@@ -126,10 +126,6 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 							<span>Sous-total</span>
 							<span data-subtotal>{PRICE_PER_CARTON} EUR</span>
 						</div>
-						<div class="flex justify-between">
-							<span>Remise</span>
-							<span data-discount>0%</span>
-						</div>
 						<div class="hidden justify-between" data-promo-row>
 							<span data-promo-label>Code promo</span>
 							<span data-promo-amount>-0 EUR</span>
@@ -278,7 +274,6 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 
 			const cartEl = form.querySelector("[data-cartons]");
 			const subtotalEl = form.querySelector("[data-subtotal]");
-			const discountEl = form.querySelector("[data-discount]");
 			const totalEl = form.querySelector("[data-total]");
 			const promoRowEl = form.querySelector("[data-promo-row]");
 			const promoLabelEl = form.querySelector("[data-promo-label]");
@@ -312,12 +307,7 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 
 			const renderTotals = () => {
 				const subtotal = cartons * pricePerCarton;
-				let discountPct = 0;
-				if (cartons >= 10) discountPct = 10;
-				else if (cartons >= 5) discountPct = 7;
-				else if (cartons >= 3) discountPct = 4;
-
-				const baseTotal = subtotal * (1 - discountPct / 100);
+				const baseTotal = subtotal;
 				let promoAmount = 0;
 				if (appliedPromo) {
 					if (cartons < Number(appliedPromo.min_cartons || 1)) {
@@ -336,7 +326,6 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 
 				if (cartEl) cartEl.textContent = String(cartons);
 				if (subtotalEl) subtotalEl.textContent = `${subtotal} EUR`;
-				if (discountEl) discountEl.textContent = `${discountPct}%`;
 				if (totalEl) totalEl.textContent = `${total} EUR`;
 				if (promoRowEl) {
 					promoRowEl.classList.toggle("hidden", !appliedPromo);
@@ -348,7 +337,7 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 				if (promoAmountEl) {
 					promoAmountEl.textContent = `-${Math.round(promoAmount)} EUR`;
 				}
-				return { subtotal, discountPct, promoAmount: Math.round(promoAmount), total };
+				return { subtotal, promoAmount: Math.round(promoAmount), total };
 			};
 
 			const setMessage = (text, type = "error") => {

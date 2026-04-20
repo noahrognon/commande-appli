@@ -13,21 +13,13 @@ export type PromoShape = {
 	value?: number | null;
 };
 
-export const getVolumeDiscountPercent = (cartons: number) => {
-	if (cartons >= 10) return 10;
-	if (cartons >= 5) return 7;
-	if (cartons >= 3) return 4;
-	return 0;
-};
-
 export const computeOrderPricing = (params: {
 	cartons: number;
 	promo?: PromoShape | null;
 }) => {
 	const cartons = Math.max(0, Number(params.cartons || 0));
 	const subtotal = cartons * PRICE_PER_CARTON;
-	const volumeDiscountPercent = getVolumeDiscountPercent(cartons);
-	const baseTotal = subtotal * (1 - volumeDiscountPercent / 100);
+	const baseTotal = subtotal;
 
 	let promoDiscountAmount = 0;
 	const promo = params.promo;
@@ -42,7 +34,6 @@ export const computeOrderPricing = (params: {
 
 	return {
 		subtotal: Math.round(subtotal),
-		volumeDiscountPercent,
 		promoDiscountAmount: Math.round(promoDiscountAmount),
 		total
 	};

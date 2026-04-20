@@ -195,13 +195,8 @@ const statusLabel = (status: string | null) => {
 			const pricePerCarton = Number(
 				root?.getAttribute("data-price-per-carton") || 0,
 			);
-			const calcTotal = (cartons) => {
-				let discountPct = 0;
-				if (cartons >= 10) discountPct = 10;
-				else if (cartons >= 5) discountPct = 7;
-				else if (cartons >= 3) discountPct = 4;
-				return Math.round(cartons * pricePerCarton * (1 - discountPct / 100));
-			};
+			const calcTotal = (cartons) =>
+				Math.round(cartons * pricePerCarton);
 
 			rows.forEach((row) => {
 				const orderId = row.getAttribute("data-order-id");
