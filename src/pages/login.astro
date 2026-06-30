@@ -6,6 +6,8 @@ export const prerender = false;
 
 let error: string | null = null;
 let success: string | null = null;
+const SUPABASE_URL = import.meta.env.SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.SUPABASE_ANON_KEY as string;
 
 if (Astro.request.method === "POST") {
 	const supabase = createServerClient();
@@ -61,7 +63,11 @@ if (Astro.request.method === "POST") {
 ---
 
 <Layout>
-	<main class="app-shell px-4 py-10 sm:px-6 lg:px-8">
+	<main
+		class="app-shell px-4 py-10 sm:px-6 lg:px-8"
+		data-supabase-url={SUPABASE_URL}
+		data-supabase-anon-key={SUPABASE_ANON_KEY}
+	>
 		<div class="mx-auto grid min-h-[72vh] max-w-5xl items-center gap-8 lg:grid-cols-[1fr_0.9fr]">
 			<section class="hidden lg:block">
 				<p class="eyebrow">Espace membre</p>
@@ -79,6 +85,21 @@ if (Astro.request.method === "POST") {
 
 				{error && <p class="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</p>}
 				{success && <p class="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{success}</p>}
+
+				<button
+					type="button"
+					class="mt-6 flex w-full items-center justify-center gap-3 rounded-full border border-black/10 bg-white px-4 py-3 text-sm font-black text-[#101820] shadow-sm transition hover:-translate-y-0.5 hover:border-[#101820]/30 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-70"
+					data-google-login
+				>
+					<span class="flex h-6 w-6 items-center justify-center rounded-full bg-[#101820] text-xs font-black text-white">G</span>
+					<span>Continuer avec Google</span>
+				</button>
+
+				<div class="my-5 flex items-center gap-3">
+					<div class="h-px flex-1 bg-black/10"></div>
+					<span class="text-xs font-black uppercase tracking-[0.16em] text-slate-400">ou</span>
+					<div class="h-px flex-1 bg-black/10"></div>
+				</div>
 
 				<form method="POST" class="mt-6 space-y-4">
 					<input type="hidden" name="auth_action" value="password" />
@@ -111,4 +132,39 @@ if (Astro.request.method === "POST") {
 			</section>
 		</div>
 	</main>
+
+	<script>
+		import { createClient } from "@supabase/supabase-js";
+
+		const root = document.querySelector("[data-supabase-url]");
+		const googleButton = document.querySelector("[data-google-login]");
+
+		if (root && googleButton instanceof HTMLButtonElement) {
+			const supabase = createClient(root.dataset.supabaseUrl, root.dataset.supabaseAnonKey);
+
+			googleButton.addEventListener("click", async () => {
+				googleButton.disabled = true;
+				const initialText = googleButton.innerHTML;
+				googleButton.innerHTML = "<span>Redirection vers Google...</span>";
+
+				const { error } = await supabase.auth.signInWithOAuth({
+					provider: "google",
+					options: {
+						redirectTo: `${window.location.origin}/auth/callback`,
+						queryParams: {
+							access_type: "offline",
+							prompt: "consent"
+						}
+					}
+				});
+
+				if (error) {
+					console.error(error);
+					googleButton.disabled = false;
+					googleButton.innerHTML = initialText;
+					alert("Connexion Google impossible pour le moment.");
+				}
+			});
+		}
+	</script>
 </Layout>
