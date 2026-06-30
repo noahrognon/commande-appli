@@ -962,7 +962,7 @@ const formatNumber = (value: number) => Math.round(value).toString();
 				</div>
 
 				<div
-					class="rounded-3xl bg-white/85 p-5 shadow-lg shadow-slate-200/60 ring-1 ring-white/50"
+					class="admin-order-toolbar rounded-3xl bg-white/85 p-5 shadow-lg shadow-slate-200/60 ring-1 ring-white/50"
 				>
 					<div
 						class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
@@ -989,7 +989,7 @@ const formatNumber = (value: number) => Math.round(value).toString();
 								class="w-full bg-transparent outline-none"
 							/>
 						</div>
-						<div class="flex flex-wrap gap-2">
+						<div class="admin-order-filters flex flex-wrap gap-2">
 							<div class="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm">
 								<span>Precommande</span>
 								<select
@@ -1116,8 +1116,8 @@ const formatNumber = (value: number) => Math.round(value).toString();
 									data-preorder-id={order.preorder_id || ""}
 									data-search={searchValue}
 								>
-									<div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-										<div class="flex items-center gap-4">
+									<div class="admin-order-top flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+										<div class="admin-order-person flex items-center gap-4">
 											<div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#eef2ff] text-lg">
 												<svg
 													class="h-5 w-5 text-[#5a5dff]"
@@ -1150,7 +1150,7 @@ const formatNumber = (value: number) => Math.round(value).toString();
 												</p>
 											</div>
 										</div>
-										<div class="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+										<div class="admin-order-meta flex flex-wrap items-center gap-3 text-xs text-slate-500">
 											<span
 												class={`badge ${statusClass}`}
 											>
@@ -1196,7 +1196,7 @@ const formatNumber = (value: number) => Math.round(value).toString();
 										class="mt-4 hidden space-y-4 border-t border-slate-100 pt-4"
 										data-order-details
 									>
-										<div class="grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
+										<div class="admin-order-details-grid grid gap-3 text-sm text-slate-600 sm:grid-cols-2">
 											<div>
 												<p class="text-xs text-slate-400">
 													Email
@@ -1220,7 +1220,7 @@ const formatNumber = (value: number) => Math.round(value).toString();
 													Preuve paiement
 												</p>
 												{paymentProofUrl ? (
-													<div class="mt-2 flex flex-wrap items-center gap-3">
+													<div class="admin-proof-row mt-2 flex flex-wrap items-center gap-3">
 														<a
 															href={paymentProofUrl}
 															target="_blank"
@@ -1300,7 +1300,7 @@ const formatNumber = (value: number) => Math.round(value).toString();
 											)}
 										</div>
 
-										<div class="flex flex-wrap gap-3">
+										<div class="admin-order-actions flex flex-wrap gap-3">
 											{order.status === "pending" && (
 												<button
 													class="action-button action-primary"
@@ -2610,13 +2610,245 @@ const formatNumber = (value: number) => Math.round(value).toString();
 	}
 
 	@media (max-width: 760px) {
+		.admin-shell {
+			padding: 0.85rem 0.75rem 6rem !important;
+		}
+
+		.admin-shell > div {
+			gap: 1rem !important;
+		}
+
+		.admin-hero {
+			border-radius: 1.25rem;
+			padding: 1rem;
+		}
+
+		.admin-title {
+			font-size: 2.15rem;
+			line-height: 0.95;
+		}
+
+		.admin-subtitle {
+			margin-top: 0.55rem;
+			font-size: 0.82rem;
+			line-height: 1.45;
+		}
+
+		.admin-hero-card {
+			border-radius: 1rem;
+			padding: 0.85rem;
+		}
+
+		.admin-hero-value {
+			font-size: 0.78rem;
+		}
+
 		.admin-tabs {
-			top: 3.8rem;
-			border-radius: 1.4rem;
+			top: 0.55rem;
+			flex-wrap: nowrap;
+			overflow-x: auto;
+			border-radius: 1.1rem;
+			padding: 0.35rem;
+			scrollbar-width: none;
+			-webkit-overflow-scrolling: touch;
+		}
+
+		.admin-tabs::-webkit-scrollbar {
+			display: none;
+		}
+
+		.tab-button,
+		.admin-tabs-link {
+			min-height: 2.65rem;
+			flex: 0 0 auto;
+			padding: 0.68rem 0.95rem;
+			white-space: nowrap;
 		}
 
 		.admin-tabs-link {
 			margin-left: 0;
+		}
+
+		[data-tab-panel] {
+			gap: 1rem !important;
+		}
+
+		.admin-section-header {
+			border-radius: 1.2rem;
+			padding: 1rem;
+		}
+
+		.admin-section-header h2 {
+			font-size: 1.75rem;
+		}
+
+		.admin-section-header p:not(.admin-eyebrow) {
+			font-size: 0.8rem;
+			line-height: 1.45;
+		}
+
+		.stat-card,
+		.metric-card,
+		.order-card,
+		.admin-order-toolbar,
+		[data-tab-panel] > div[class*="rounded-3xl"],
+		[data-tab-panel] > div[class*="rounded-2xl"] {
+			border-radius: 1.15rem !important;
+			padding: 1rem !important;
+			box-shadow: 0 12px 32px rgba(16, 24, 32, 0.08) !important;
+		}
+
+		.stat-value,
+		.metric-value {
+			font-size: 1.55rem;
+		}
+
+		.admin-order-toolbar > div {
+			gap: 0.8rem !important;
+		}
+
+		.admin-order-toolbar input {
+			font-size: 16px;
+		}
+
+		.admin-order-filters {
+			display: grid !important;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			width: 100%;
+			gap: 0.55rem !important;
+		}
+
+		.admin-order-filters > div,
+		.admin-order-filters > a,
+		.admin-order-filters > button {
+			width: 100%;
+			min-width: 0;
+		}
+
+		.admin-order-filters > div {
+			grid-column: 1 / -1;
+			justify-content: space-between;
+			padding: 0.75rem 0.85rem !important;
+		}
+
+		.admin-order-filters select {
+			max-width: 11rem;
+			font-size: 16px;
+		}
+
+		.filter-button {
+			min-height: 2.75rem;
+			padding: 0.68rem 0.75rem;
+			font-size: 0.72rem;
+			text-align: center;
+		}
+
+		.order-card {
+			padding: 1rem !important;
+		}
+
+		.admin-order-top {
+			position: relative;
+			gap: 0.85rem !important;
+			padding-right: 3rem;
+		}
+
+		.admin-order-person {
+			align-items: flex-start;
+			gap: 0.8rem !important;
+		}
+
+		.admin-order-person > div:first-child {
+			height: 2.25rem;
+			width: 2.25rem;
+			border-radius: 0.85rem;
+		}
+
+		.admin-order-person p {
+			overflow-wrap: anywhere;
+		}
+
+		.admin-order-meta {
+			display: grid !important;
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 0.5rem !important;
+			width: 100%;
+		}
+
+		.admin-order-meta > span {
+			display: inline-flex;
+			min-height: 2.15rem;
+			align-items: center;
+			justify-content: center;
+			border-radius: 0.9rem;
+			background: rgba(255, 255, 255, 0.65);
+			padding: 0.45rem 0.5rem;
+			text-align: center;
+			font-weight: 850;
+			color: #475569;
+		}
+
+		.toggle-button {
+			position: absolute;
+			right: 0;
+			top: 0;
+			height: 2.45rem;
+			width: 2.45rem;
+		}
+
+		.admin-order-details-grid {
+			grid-template-columns: 1fr !important;
+			gap: 0.85rem !important;
+		}
+
+		.admin-order-details-grid > div {
+			border-radius: 1rem;
+			background: rgba(255, 255, 255, 0.62);
+			padding: 0.85rem;
+		}
+
+		.admin-proof-row {
+			align-items: stretch !important;
+		}
+
+		.admin-proof-row > a:first-child {
+			width: 100%;
+		}
+
+		.admin-proof-row img {
+			height: 10rem !important;
+			width: 100% !important;
+		}
+
+		.admin-proof-row .badge,
+		.admin-proof-row > a:not(:first-child),
+		.admin-proof-row .action-button {
+			width: 100%;
+			justify-content: center;
+		}
+
+		.admin-order-actions {
+			display: grid !important;
+			grid-template-columns: 1fr;
+			gap: 0.65rem !important;
+		}
+
+		.action-button {
+			min-height: 2.9rem;
+			width: 100%;
+			padding: 0.78rem 1rem;
+			font-size: 0.78rem;
+		}
+
+		.flavor-pill,
+		.badge,
+		.trend-badge {
+			border-radius: 0.85rem;
+			line-height: 1.2;
+		}
+
+		.admin-action-board {
+			grid-template-columns: 1fr;
 		}
 	}
 </style>
