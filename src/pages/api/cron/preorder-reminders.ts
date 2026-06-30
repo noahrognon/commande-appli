@@ -21,17 +21,18 @@ export const GET: APIRoute = async () => {
 		.maybeSingle();
 
 	if (!preorder) {
-		return new Response(JSON.stringify({ sentCount: 0, daysLeft: null }), {
+		return new Response(JSON.stringify({ sentCount: 0, hoursLeft: null }), {
 			status: 200,
 			headers: { "content-type": "application/json" }
 		});
 	}
 
 	const endDate = new Date(preorder.end_date);
-	const daysLeft = Math.floor((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+	const millisecondsLeft = endDate.getTime() - now.getTime();
+	const hoursLeft = Math.ceil(millisecondsLeft / (1000 * 60 * 60));
 
-	if (![1, 2, 3].includes(daysLeft)) {
-		return new Response(JSON.stringify({ sentCount: 0, daysLeft }), {
+	if (millisecondsLeft <= 0 || hoursLeft > 24) {
+		return new Response(JSON.stringify({ sentCount: 0, hoursLeft }), {
 			status: 200,
 			headers: { "content-type": "application/json" }
 		});
@@ -44,13 +45,6 @@ export const GET: APIRoute = async () => {
 		.neq("status", "cancelled");
 
 	const ordersList = orders ?? [];
-	if (ordersList.length === 0) {
-		return new Response(JSON.stringify({ sentCount: 0, daysLeft }), {
-			status: 200,
-			headers: { "content-type": "application/json" }
-		});
-	}
-
 	const usersMap = await fetchUsersMap(supabaseAdmin);
 	const orderByUser = new Map<string, string>();
 	for (const order of ordersList) {
@@ -60,11 +54,11 @@ export const GET: APIRoute = async () => {
 	}
 
 	let sentCount = 0;
-	const emailType = `preorder_reminder_${daysLeft}d`;
+	const emailType = "preorder_reminder_24h";
 
-	for (const [userId, orderId] of orderByUser.entries()) {
-		const user = usersMap.get(userId);
+	for (const [userId, user] of usersMap.entries()) {
 		if (!user || !user.email) continue;
+		const orderId = orderByUser.get(userId) || null;
 
 		const { data: existing } = await supabaseAdmin
 			.from("email_logs")
@@ -78,7 +72,7 @@ export const GET: APIRoute = async () => {
 
 		const emailContent = getPreorderReminderEmail({
 			firstName: user.firstName,
-			daysLeft,
+			hoursLeft: 24,
 			preorderName: preorder.name,
 			endDate: preorder.end_date
 		});
@@ -104,7 +98,7 @@ export const GET: APIRoute = async () => {
 		}
 	}
 
-	return new Response(JSON.stringify({ sentCount, daysLeft }), {
+	return new Response(JSON.stringify({ sentCount, hoursLeft }), {
 		status: 200,
 		headers: { "content-type": "application/json" }
 	});

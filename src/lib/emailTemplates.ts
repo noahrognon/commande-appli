@@ -19,6 +19,29 @@ const link = (path: string) => {
 	return siteUrl ? `${siteUrl}${path}` : path;
 };
 
+const money = (value: number) => `${Math.round(value)} EUR`;
+
+const renderFlavorList = (flavors?: { name: string; quantity: number }[]) => {
+	if (!flavors?.length) return "";
+	return `
+		<li>Gouts selectionnes:
+			<ul>
+				${flavors
+					.map(
+						(flavor) =>
+							`<li><strong>${flavor.quantity}</strong> x ${flavor.name || "Gout selectionne"}</li>`
+					)
+					.join("")}
+			</ul>
+		</li>
+	`;
+};
+
+const textFlavorList = (flavors?: { name: string; quantity: number }[]) => {
+	if (!flavors?.length) return "";
+	return ` Gouts: ${flavors.map((flavor) => `${flavor.quantity} x ${flavor.name || "Gout"}`).join(", ")}.`;
+};
+
 export const getOrderConfirmationEmail = (params: {
 	firstName?: string;
 	orderNumber: string;
@@ -27,23 +50,40 @@ export const getOrderConfirmationEmail = (params: {
 	estimatedStart?: string;
 	estimatedEnd?: string;
 	paymentMethod?: string;
+	paymentProofReceived?: boolean;
+	flavors?: { name: string; quantity: number }[];
+	nextStep?: string;
 }) => {
 	const name = formatName(params.firstName);
 	const payment = params.paymentMethod === "virement" ? "virement bancaire" : "paiement liquide";
+	const proof =
+		params.paymentMethod === "virement"
+			? params.paymentProofReceived
+				? "preuve de virement recue"
+				: "preuve de virement en attente"
+			: "non necessaire";
+	const nextStep =
+		params.nextStep ||
+		(params.paymentMethod === "virement"
+			? "Nous allons verifier la preuve de paiement puis valider la commande."
+			: "La commande sera validee apres confirmation du paiement.");
 	const subject = `Confirmation de commande ${params.orderNumber}`;
 	const html = `
 		<div style="font-family: Arial, sans-serif; color:#111827;">
 			<h2>Merci ${name}</h2>
-			<p>Votre commande est bien enregistree.</p>
+			<p>Votre commande est bien enregistree. Voici le recapitulatif.</p>
 			<ul>
 				<li>Numero: <strong>${params.orderNumber}</strong></li>
 				<li>Cartons: <strong>${params.cartons}</strong></li>
-				<li>Total: <strong>${Math.round(params.total)} EUR</strong></li>
+				<li>Total: <strong>${money(params.total)}</strong></li>
 				<li>Paiement: <strong>${payment}</strong></li>
+				<li>Preuve de paiement: <strong>${proof}</strong></li>
+				${renderFlavorList(params.flavors)}
 				<li>Livraison estimee: <strong>${formatDate(params.estimatedStart)} - ${formatDate(
 		params.estimatedEnd
 	)}</strong></li>
 			</ul>
+			<p><strong>Prochaine etape:</strong> ${nextStep}</p>
 			<p>
 				<a href="${link("/profile")}" style="display:inline-block;padding:10px 16px;background:#4f6fff;color:#fff;border-radius:8px;text-decoration:none;">
 					Voir ma commande
@@ -53,24 +93,86 @@ export const getOrderConfirmationEmail = (params: {
 	`;
 	const text = `Merci ${name}. Commande ${params.orderNumber}. Cartons ${params.cartons}. Total ${Math.round(
 		params.total
-	)} EUR. Paiement ${payment}. Livraison estimee ${formatDate(params.estimatedStart)} - ${formatDate(
+	)} EUR. Paiement ${payment}. Preuve: ${proof}.${textFlavorList(params.flavors)} Prochaine etape: ${nextStep}. Livraison estimee ${formatDate(params.estimatedStart)} - ${formatDate(
 		params.estimatedEnd
 	)}.`;
 	return { subject, html, text };
 };
 
+export const getPaymentPendingEmail = (params: {
+	firstName?: string;
+	orderNumber: string;
+	total: number;
+	paymentMethod?: string;
+}) => {
+	const name = formatName(params.firstName);
+	const payment = params.paymentMethod === "virement" ? "virement bancaire" : "paiement liquide";
+	const action =
+		params.paymentMethod === "virement"
+			? "La preuve de paiement doit etre presente et valide pour que la commande soit confirmee."
+			: "Le paiement liquide doit etre confirme pour que la commande soit validee.";
+	const subject = `Paiement en attente - ${params.orderNumber}`;
+	const html = `
+		<div style="font-family: Arial, sans-serif; color:#111827;">
+			<h2>Bonjour ${name}</h2>
+			<p>Votre commande <strong>${params.orderNumber}</strong> est bien creee, mais le paiement est encore en attente.</p>
+			<ul>
+				<li>Total: <strong>${money(params.total)}</strong></li>
+				<li>Methode: <strong>${payment}</strong></li>
+			</ul>
+			<p>${action}</p>
+			<p>
+				<a href="${link("/profile")}" style="display:inline-block;padding:10px 16px;background:#111827;color:#fff;border-radius:8px;text-decoration:none;">
+					Voir ma commande
+				</a>
+			</p>
+		</div>
+	`;
+	const text = `Bonjour ${name}. Paiement en attente pour la commande ${params.orderNumber}. Total ${money(
+		params.total
+	)}. Methode: ${payment}. ${action}`;
+	return { subject, html, text };
+};
+
+export const getPaymentValidatedEmail = (params: { firstName?: string; orderNumber: string }) => {
+	const name = formatName(params.firstName);
+	const subject = `Paiement valide - ${params.orderNumber}`;
+	const html = `
+		<div style="font-family: Arial, sans-serif; color:#111827;">
+			<h2>Bonjour ${name}</h2>
+			<p>Le paiement de votre commande <strong>${params.orderNumber}</strong> est valide.</p>
+			<p>Votre commande est confirmee et partira dans la vague fournisseur.</p>
+			<p>
+				<a href="${link("/profile")}" style="display:inline-block;padding:10px 16px;background:#4f6fff;color:#fff;border-radius:8px;text-decoration:none;">
+					Suivre ma commande
+				</a>
+			</p>
+		</div>
+	`;
+	const text = `Bonjour ${name}. Paiement valide pour la commande ${params.orderNumber}. Votre commande partira dans la vague fournisseur.`;
+	return { subject, html, text };
+};
+
 export const getPreorderReminderEmail = (params: {
 	firstName?: string;
-	daysLeft: number;
+	daysLeft?: number;
+	hoursLeft?: number;
 	preorderName: string;
 	endDate: string;
 }) => {
 	const name = formatName(params.firstName);
-	const subject = `Rappel precommande: J-${params.daysLeft}`;
+	const remaining =
+		typeof params.hoursLeft === "number"
+			? `dans moins de ${params.hoursLeft}h`
+			: `dans ${params.daysLeft ?? 1} jour(s)`;
+	const subject =
+		typeof params.hoursLeft === "number"
+			? "Dernieres 24h pour la precommande"
+			: `Rappel precommande: J-${params.daysLeft}`;
 	const html = `
 		<div style="font-family: Arial, sans-serif; color:#111827;">
 			<h2>Bonjour ${name}</h2>
-			<p>La precommande <strong>${params.preorderName}</strong> se termine dans ${params.daysLeft} jour(s).</p>
+			<p>La precommande <strong>${params.preorderName}</strong> se termine ${remaining}.</p>
 			<p>Date de fin: <strong>${formatDate(params.endDate)}</strong></p>
 			<p>
 				<a href="${link("/precommande")}" style="display:inline-block;padding:10px 16px;background:#7a4bff;color:#fff;border-radius:8px;text-decoration:none;">
@@ -79,7 +181,7 @@ export const getPreorderReminderEmail = (params: {
 			</p>
 		</div>
 	`;
-	const text = `Bonjour ${name}. La precommande ${params.preorderName} se termine dans ${params.daysLeft} jour(s). Fin: ${formatDate(
+	const text = `Bonjour ${name}. La precommande ${params.preorderName} se termine ${remaining}. Fin: ${formatDate(
 		params.endDate
 	)}.`;
 	return { subject, html, text };

@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail } from "../../../server/lib/email.js";
-import { getOrderConfirmationEmail } from "../../lib/emailTemplates";
+import { getOrderConfirmationEmail, getPaymentPendingEmail } from "../../lib/emailTemplates";
 import { createNotification } from "../../lib/notifications";
 import { computeOrderPricing } from "../../lib/orderPricing";
 import type { PromoCodeRow } from "../../lib/promoCodes";
@@ -63,7 +63,7 @@ export const POST: APIRoute = async ({ request }) => {
 		const preorder_id = body.preorder_id as string;
 		const flavors = Array.isArray(body.flavors) ? body.flavors : [];
 		const promo_code = String(body.promo_code || "");
-		const payment_proof_path = String(body.payment_proof_path || "").trim();
+		let payment_proof_path = String(body.payment_proof_path || "").trim();
 		let order_number = generateOrderNumber();
 
 		if (!preorder_id) {
@@ -77,6 +77,9 @@ export const POST: APIRoute = async ({ request }) => {
 		}
 		if (payment_method !== "virement" && payment_proof_path && !payment_proof_path.startsWith(`${user.id}/`)) {
 			return new Response(JSON.stringify({ success: false, error: "Preuve de paiement invalide." }), { status: 400 });
+		}
+		if (payment_method !== "virement") {
+			payment_proof_path = "";
 		}
 		if (cartons < 1) {
 			return new Response(JSON.stringify({ success: false, error: "Au moins 1 carton requis." }), { status: 400 });
@@ -127,6 +130,19 @@ export const POST: APIRoute = async ({ request }) => {
 			return new Response(JSON.stringify({ success: false, error: "Maximum 10 gouts selectionnes." }), { status: 400 });
 		}
 
+		const { data: flavorNamesData } = await adminClient
+			.from("flavors")
+			.select("id, name")
+			.in(
+				"id",
+				flavorRows.map((row) => row.flavor_id)
+			);
+		const flavorNameMap = new Map((flavorNamesData ?? []).map((flavor) => [flavor.id, flavor.name]));
+		const selectedFlavors = flavorRows.map((row) => ({
+			name: flavorNameMap.get(row.flavor_id) || "Gout selectionne",
+			quantity: row.quantity
+		}));
+
 		const addDays = (dateStr: string, days: number) => {
 			const d = new Date(dateStr);
 			d.setUTCDate(d.getUTCDate() + days);
@@ -155,8 +171,8 @@ export const POST: APIRoute = async ({ request }) => {
 					promo_code_id: promo?.id || null,
 					promo_code: promo?.code || null,
 					promo_discount_amount: pricing.promoDiscountAmount,
-					payment_proof_path,
-					payment_proof_uploaded_at: new Date().toISOString()
+					payment_proof_path: payment_proof_path || null,
+					payment_proof_uploaded_at: payment_proof_path ? new Date().toISOString() : null
 				})
 				.select("id")
 				.single();
@@ -221,7 +237,13 @@ export const POST: APIRoute = async ({ request }) => {
 					total,
 					estimatedStart: estimated_delivery_start,
 					estimatedEnd: estimated_delivery_end,
-					paymentMethod: payment_method
+					paymentMethod: payment_method,
+					paymentProofReceived: payment_method === "virement" && Boolean(payment_proof_path),
+					flavors: selectedFlavors,
+					nextStep:
+						payment_method === "virement"
+							? "Nous verifions la preuve de virement. Une fois le paiement valide, la commande partira dans la vague fournisseur."
+							: "Le paiement liquide doit etre confirme pour valider definitivement la commande."
 				});
 				await sendEmail({
 					to: user.email,
@@ -241,6 +263,35 @@ export const POST: APIRoute = async ({ request }) => {
 				}
 			} catch (mailError) {
 				console.error("Email confirmation failed", mailError);
+			}
+
+			if (payment_method === "liquide") {
+				try {
+					const pendingEmail = getPaymentPendingEmail({
+						firstName,
+						orderNumber: order_number || `CMD-${order_id}`,
+						total,
+						paymentMethod: payment_method
+					});
+					await sendEmail({
+						to: user.email,
+						subject: pendingEmail.subject,
+						html: pendingEmail.html,
+						text: pendingEmail.text
+					});
+
+					const { error: pendingLogError } = await adminClient.from("email_logs").insert({
+						type: `payment_pending_${order_id}`,
+						user_id: user.id,
+						preorder_id,
+						order_id
+					});
+					if (pendingLogError) {
+						console.error("Payment pending email log insert failed", pendingLogError);
+					}
+				} catch (mailError) {
+					console.error("Payment pending email failed", mailError);
+				}
 			}
 		}
 
