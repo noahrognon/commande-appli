@@ -37,7 +37,14 @@ export const POST: APIRoute = async ({ request }) => {
 		return new Response("Commande introuvable.", { status: 404 });
 	}
 
-	const { error } = await supabaseAdmin.from("orders").update({ status }).eq("id", order_id);
+	const updatePayload: Record<string, string | null> = { status };
+	if (status === "confirmed" && order.payment_method === "virement") {
+		updatePayload.payment_proof_status = "valid";
+		updatePayload.payment_proof_rejection_reason = null;
+		updatePayload.payment_proof_reviewed_at = new Date().toISOString();
+	}
+
+	const { error } = await supabaseAdmin.from("orders").update(updatePayload).eq("id", order_id);
 	if (error) {
 		return new Response(error.message, { status: 400 });
 	}

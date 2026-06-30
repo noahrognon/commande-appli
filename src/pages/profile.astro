@@ -20,7 +20,7 @@ if (userError || !user) return Astro.redirect("/login");
 
 const { data: ordersData } = await adminClient
 	.from("orders")
-	.select("id, order_number, cartons, total, status, estimated_delivery_start, estimated_delivery_end, payment_method, preorder_id, created_at")
+	.select("id, order_number, cartons, total, status, estimated_delivery_start, estimated_delivery_end, payment_method, preorder_id, created_at, payment_proof_status, payment_proof_rejection_reason")
 	.eq("user_id", user.id)
 	.order("created_at", { ascending: false });
 
@@ -31,12 +31,25 @@ const { data: openPreordersData } = await adminClient.from("preorders").select("
 const openPreorders = new Set((openPreordersData ?? []).map((p) => p.id));
 
 let flavorCounts: Record<string, number> = {};
+const supplierSentOrders = new Set<string>();
+const stockReceivedOrders = new Set<string>();
 if (orderIds.length > 0) {
 	const { data: orderFlavorsData } = await adminClient.from("order_flavors").select("order_id, quantity").in("order_id", orderIds);
 	for (const row of orderFlavorsData ?? []) {
 		const key = row.order_id as string;
 		const qty = Number(row.quantity || 0);
 		flavorCounts[key] = (flavorCounts[key] || 0) + qty;
+	}
+
+	const { data: emailLogsData } = await adminClient
+		.from("email_logs")
+		.select("order_id, type")
+		.in("order_id", orderIds)
+		.in("type", ["supplier_order_sent", "stock_received"]);
+	for (const log of emailLogsData ?? []) {
+		if (!log.order_id) continue;
+		if (log.type === "supplier_order_sent") supplierSentOrders.add(log.order_id);
+		if (log.type === "stock_received") stockReceivedOrders.add(log.order_id);
 	}
 }
 
@@ -54,6 +67,38 @@ const statusLabel = (status: string | null) => {
 	if (status === "delivered") return { text: "Livrée", className: "bg-emerald-100 text-emerald-800" };
 	if (status === "confirmed") return { text: "Confirmée", className: "bg-blue-100 text-blue-800" };
 	return { text: "En cours", className: "bg-amber-100 text-amber-800" };
+};
+
+const orderTimeline = (order: any) => {
+	const isDelivered = order.status === "delivered";
+	const paymentValidated = order.status === "confirmed" || isDelivered || order.payment_proof_status === "valid";
+	const paymentInvalid = order.payment_proof_status === "invalid";
+	const supplierSent = supplierSentOrders.has(order.id);
+	const stockReceived = stockReceivedOrders.has(order.id);
+	return [
+		{ label: "Commande creee", state: "done" },
+		{
+			label: paymentInvalid ? "Paiement a corriger" : "Paiement en attente",
+			state: paymentValidated ? "done" : paymentInvalid ? "error" : "current"
+		},
+		{ label: "Paiement valide", state: paymentValidated ? "done" : "todo" },
+		{ label: "Commande fournisseur envoyee", state: supplierSent ? "done" : paymentValidated ? "current" : "todo" },
+		{ label: "Stock recu", state: stockReceived ? "done" : supplierSent ? "current" : "todo" },
+		{ label: "Livree", state: isDelivered ? "done" : stockReceived ? "current" : "todo" }
+	];
+};
+
+const timelineDotClass = (state: string) => {
+	if (state === "done") return "bg-[#28e08f] text-[#101820] ring-[#28e08f]/25";
+	if (state === "current") return "bg-[#101820] text-white ring-[#101820]/15";
+	if (state === "error") return "bg-red-500 text-white ring-red-500/20";
+	return "bg-slate-200 text-slate-500 ring-slate-200/30";
+};
+
+const timelineTextClass = (state: string) => {
+	if (state === "error") return "text-red-700";
+	if (state === "todo") return "text-slate-400";
+	return "text-[#101820]";
 };
 ---
 
@@ -105,6 +150,35 @@ const statusLabel = (status: string | null) => {
 								<div class="rounded-2xl bg-white/60 p-3"><p class="text-xl font-black text-[#101820]">{orderFlavors}</p><p class="text-xs font-bold text-slate-500">Goûts</p></div>
 							</div>
 
+							<div class="mt-5 rounded-[1.25rem] border border-black/10 bg-white/60 p-4">
+								<p class="text-xs font-black uppercase tracking-[0.14em] text-[#116b4c]">Suivi commande</p>
+								<div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+									{orderTimeline(order).map((step) => (
+										<div class="flex items-center gap-3">
+											<span class={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-black ring-4 ${timelineDotClass(step.state)}`}>
+												{step.state === "done" ? "✓" : step.state === "error" ? "!" : ""}
+											</span>
+											<span class={`text-xs font-black ${timelineTextClass(step.state)}`}>{step.label}</span>
+										</div>
+									))}
+								</div>
+								{order.payment_proof_status === "invalid" && order.payment_proof_rejection_reason && (
+									<p class="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-xs font-bold text-red-700">
+										Preuve refusee: {order.payment_proof_rejection_reason}
+									</p>
+								)}
+								{order.payment_method === "virement" && order.payment_proof_status === "invalid" && (
+									<div class="mt-4 rounded-2xl border border-red-100 bg-white/80 p-4" data-proof-row data-order-id={order.id}>
+										<p class="text-xs font-black uppercase tracking-[0.14em] text-red-700">Renvoyer une preuve</p>
+										<div class="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
+											<input type="file" accept="image/png,image/jpeg,image/webp" class="rounded-2xl border border-black/10 bg-white px-3 py-2 text-xs font-bold text-slate-600" data-proof-input />
+											<button type="button" class="btn-primary px-4 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-60" data-proof-save>Envoyer la preuve</button>
+										</div>
+										<p class="mt-2 text-xs font-bold text-slate-500" data-proof-status>JPG, PNG ou WEBP, maximum 6 Mo.</p>
+									</div>
+								)}
+							</div>
+
 							<div class="mt-4 flex justify-end">
 								<a href={`/precommande?repeatOrder=${order.id}`} class="btn-secondary px-4 py-2 text-xs">Recommande rapide</a>
 							</div>
@@ -133,8 +207,8 @@ const statusLabel = (status: string | null) => {
 	<script type="module">
 		(() => {
 			const rows = document.querySelectorAll("[data-order-row]");
+			const proofRows = document.querySelectorAll("[data-proof-row]");
 			const root = document.querySelector("[data-price-per-carton]");
-			if (!rows.length) return;
 			const pricePerCarton = Number(root?.getAttribute("data-price-per-carton") || 0);
 			const calcTotal = (cartons) => Math.round(cartons * pricePerCarton);
 			rows.forEach((row) => {
@@ -206,6 +280,62 @@ const statusLabel = (status: string | null) => {
 						row.closest("article")?.remove();
 					});
 				}
+			});
+
+			proofRows.forEach((row) => {
+				const orderId = row.getAttribute("data-order-id");
+				const input = row.querySelector("[data-proof-input]");
+				const button = row.querySelector("[data-proof-save]");
+				const status = row.querySelector("[data-proof-status]");
+				if (!orderId || !(input instanceof HTMLInputElement) || !(button instanceof HTMLButtonElement)) return;
+
+				button.addEventListener("click", async () => {
+					const file = input.files?.[0];
+					if (!file) {
+						if (status) status.textContent = "Ajoute une image avant d'envoyer.";
+						return;
+					}
+
+					button.disabled = true;
+					const initialText = button.textContent;
+					button.textContent = "Envoi...";
+					if (status) status.textContent = "Upload de la preuve...";
+
+					try {
+						const formData = new FormData();
+						formData.append("proof", file);
+						const uploadResponse = await fetch("/api/upload-payment-proof", {
+							method: "POST",
+							body: formData
+						});
+						const uploadResult = await uploadResponse.json().catch(() => null);
+						if (!uploadResponse.ok || !uploadResult?.success || !uploadResult?.path) {
+							throw new Error(uploadResult?.error || "Upload impossible.");
+						}
+
+						if (status) status.textContent = "Association a la commande...";
+						const updateResponse = await fetch("/api/update-payment-proof", {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								order_id: orderId,
+								payment_proof_path: uploadResult.path
+							})
+						});
+						const updateResult = await updateResponse.json().catch(() => null);
+						if (!updateResponse.ok || !updateResult?.success) {
+							throw new Error(updateResult?.error || "Mise a jour impossible.");
+						}
+
+						if (status) status.textContent = "Nouvelle preuve envoyee, verification en cours.";
+						button.textContent = "Envoyee";
+						setTimeout(() => window.location.reload(), 900);
+					} catch (error) {
+						if (status) status.textContent = error instanceof Error ? error.message : "Impossible d'envoyer la preuve.";
+						button.disabled = false;
+						button.textContent = initialText || "Envoyer la preuve";
+					}
+				});
 			});
 		})();
 	</script>

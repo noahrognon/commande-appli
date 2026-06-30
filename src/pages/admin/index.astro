@@ -19,7 +19,7 @@ if (!supabaseAdmin) {
 const { data: ordersData } = await supabaseAdmin
 	.from("orders")
 	.select(
-		"id, order_number, user_id, preorder_id, cartons, total, payment_method, status, created_at, payment_proof_path",
+		"id, order_number, user_id, preorder_id, cartons, total, payment_method, status, created_at, payment_proof_path, payment_proof_status, payment_proof_rejection_reason",
 	)
 	.order("created_at", { ascending: false });
 
@@ -1088,6 +1088,22 @@ const formatNumber = (value: number) => Math.round(value).toString();
 							const purchaseCost = order.cartons * COST_PER_CARTON;
 							const margin = order.total - purchaseCost;
 							const paymentProofUrl = paymentProofUrls.get(order.id) || "";
+							const proofStatusLabel =
+								{
+									none: "Non necessaire",
+									pending: "A verifier",
+									valid: "Validee",
+									invalid: "Refusee",
+								}[String((order as any).payment_proof_status || "none")] ||
+								"Non necessaire";
+							const proofStatusClass =
+								{
+									none: "badge-info",
+									pending: "badge-warning",
+									valid: "badge-success",
+									invalid: "badge-error",
+								}[String((order as any).payment_proof_status || "none")] ||
+								"badge-info";
 							const marginPercent =
 								order.total > 0
 									? (margin / order.total) * 100
@@ -1140,6 +1156,11 @@ const formatNumber = (value: number) => Math.round(value).toString();
 											>
 												{statusLabel}
 											</span>
+											{order.payment_method === "virement" && (
+												<span class={`badge ${proofStatusClass}`}>
+													Preuve: {proofStatusLabel}
+												</span>
+											)}
 											<span>{order.cartons} cartons</span>
 											<span>
 												{formatNumber(order.total)} EUR
@@ -1199,7 +1220,7 @@ const formatNumber = (value: number) => Math.round(value).toString();
 													Preuve paiement
 												</p>
 												{paymentProofUrl ? (
-													<div class="mt-2 flex items-center gap-3">
+													<div class="mt-2 flex flex-wrap items-center gap-3">
 														<a
 															href={paymentProofUrl}
 															target="_blank"
@@ -1221,10 +1242,28 @@ const formatNumber = (value: number) => Math.round(value).toString();
 														>
 															Ouvrir
 														</a>
+														<span class={`badge ${proofStatusClass}`}>
+															{proofStatusLabel}
+														</span>
+														{order.payment_method === "virement" && (
+															<button
+																class="action-button action-danger"
+																data-action="reject-proof"
+																data-order-id={order.id}
+																type="button"
+															>
+																Refuser la preuve
+															</button>
+														)}
 													</div>
 												) : (
 													<p class="font-semibold text-red-600">
 														Manquante
+													</p>
+												)}
+												{(order as any).payment_proof_rejection_reason && (
+													<p class="mt-2 rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+														Raison: {(order as any).payment_proof_rejection_reason}
 													</p>
 												)}
 											</div>
@@ -1842,6 +1881,39 @@ const formatNumber = (value: number) => Math.round(value).toString();
 			} catch (err) {
 				actionButton.removeAttribute("disabled");
 				actionButton.textContent = originalText;
+				console.error(err);
+			}
+			return;
+		}
+
+		const rejectProofButton = target.closest("[data-action='reject-proof']");
+		if (rejectProofButton) {
+			const orderId = rejectProofButton.getAttribute("data-order-id");
+			if (!orderId) return;
+			const reason = window.prompt(
+				"Pourquoi la preuve est refusee ?",
+				"Preuve illisible, mauvais montant ou reference manquante."
+			);
+			if (reason === null) return;
+			const originalText = rejectProofButton.textContent || "";
+			rejectProofButton.setAttribute("disabled", "true");
+			rejectProofButton.textContent = "Refus en cours...";
+			try {
+				const response = await fetch("/api/admin/reject-payment-proof", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({
+						order_id: orderId,
+						reason,
+					}),
+				});
+				if (!response.ok) {
+					throw new Error(await response.text());
+				}
+				window.location.reload();
+			} catch (err) {
+				rejectProofButton.removeAttribute("disabled");
+				rejectProofButton.textContent = originalText;
 				console.error(err);
 			}
 			return;

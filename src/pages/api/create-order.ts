@@ -2,7 +2,7 @@ import type { APIRoute } from "astro";
 import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail } from "../../../server/lib/email.js";
-import { getOrderConfirmationEmail, getPaymentPendingEmail } from "../../lib/emailTemplates";
+import { getAdminNewOrderEmail, getOrderConfirmationEmail, getPaymentPendingEmail } from "../../lib/emailTemplates";
 import { createNotification } from "../../lib/notifications";
 import { computeOrderPricing } from "../../lib/orderPricing";
 import type { PromoCodeRow } from "../../lib/promoCodes";
@@ -14,6 +14,7 @@ const SUPABASE_SERVICE_ROLE_KEY = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
 const adminClient = SUPABASE_SERVICE_ROLE_KEY
 	? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
 	: null;
+const ADMIN_ORDER_EMAILS = ["noah.rognon@gmail.com", "robinperrotaudet@gmail.com"];
 
 export const prerender = false;
 
@@ -172,7 +173,10 @@ export const POST: APIRoute = async ({ request }) => {
 					promo_code: promo?.code || null,
 					promo_discount_amount: pricing.promoDiscountAmount,
 					payment_proof_path: payment_proof_path || null,
-					payment_proof_uploaded_at: payment_proof_path ? new Date().toISOString() : null
+					payment_proof_uploaded_at: payment_proof_path ? new Date().toISOString() : null,
+					payment_proof_status: payment_proof_path ? "pending" : "none",
+					payment_proof_rejection_reason: null,
+					payment_proof_reviewed_at: null
 				})
 				.select("id")
 				.single();
@@ -293,6 +297,30 @@ export const POST: APIRoute = async ({ request }) => {
 					console.error("Payment pending email failed", mailError);
 				}
 			}
+		}
+
+		try {
+			const clientName = [firstName, typeof user.user_metadata?.last_name === "string" ? user.user_metadata.last_name : ""]
+				.filter(Boolean)
+				.join(" ");
+			const adminEmail = getAdminNewOrderEmail({
+				orderNumber: order_number || `CMD-${order_id}`,
+				clientName,
+				clientEmail: user.email || "",
+				cartons,
+				total,
+				paymentMethod: payment_method,
+				paymentProofReceived: payment_method === "virement" && Boolean(payment_proof_path),
+				flavors: selectedFlavors
+			});
+			await sendEmail({
+				to: ADMIN_ORDER_EMAILS.join(", "),
+				subject: adminEmail.subject,
+				html: adminEmail.html,
+				text: adminEmail.text
+			});
+		} catch (mailError) {
+			console.error("Admin new order email failed", mailError);
 		}
 
 		return new Response(JSON.stringify({ success: true }), { status: 200 });

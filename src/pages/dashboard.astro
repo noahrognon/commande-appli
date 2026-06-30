@@ -10,6 +10,9 @@ export const prerender = false;
 let firstName = "Invité";
 let unreadNotifications = 0;
 let latestNotifications: { id: string; title: string; message: string; link: string | null; is_read: boolean; created_at: string }[] = [];
+let latestOrders: any[] = [];
+const supplierSentOrders = new Set<string>();
+const stockReceivedOrders = new Set<string>();
 
 const user = await getUserFromCookies(Astro.cookies);
 const SUPABASE_SERVICE_ROLE_KEY = import.meta.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -22,14 +25,58 @@ if (user) {
 
 	if (SUPABASE_SERVICE_ROLE_KEY) {
 		const adminClient = createClient(import.meta.env.SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-		const [{ data: notificationsData }, { count }] = await Promise.all([
+		const [{ data: notificationsData }, { count }, { data: ordersData }] = await Promise.all([
 			adminClient.from("notifications").select("id, title, message, link, is_read, created_at").eq("user_id", user.id).order("created_at", { ascending: false }).limit(3),
-			adminClient.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("is_read", false)
+			adminClient.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", user.id).eq("is_read", false),
+			adminClient
+				.from("orders")
+				.select("id, order_number, status, payment_method, payment_proof_status, payment_proof_rejection_reason, created_at")
+				.eq("user_id", user.id)
+				.order("created_at", { ascending: false })
+				.limit(2)
 		]);
 		latestNotifications = notificationsData ?? [];
 		unreadNotifications = count || 0;
+		latestOrders = ordersData ?? [];
+
+		const orderIds = latestOrders.map((order) => order.id);
+		if (orderIds.length > 0) {
+			const { data: emailLogsData } = await adminClient
+				.from("email_logs")
+				.select("order_id, type")
+				.in("order_id", orderIds)
+				.in("type", ["supplier_order_sent", "stock_received"]);
+			for (const log of emailLogsData ?? []) {
+				if (!log.order_id) continue;
+				if (log.type === "supplier_order_sent") supplierSentOrders.add(log.order_id);
+				if (log.type === "stock_received") stockReceivedOrders.add(log.order_id);
+			}
+		}
 	}
 }
+
+const orderTimeline = (order: any) => {
+	const isDelivered = order.status === "delivered";
+	const paymentValidated = order.status === "confirmed" || isDelivered || order.payment_proof_status === "valid";
+	const paymentInvalid = order.payment_proof_status === "invalid";
+	const supplierSent = supplierSentOrders.has(order.id);
+	const stockReceived = stockReceivedOrders.has(order.id);
+	return [
+		{ label: "Commande creee", state: "done" },
+		{ label: paymentInvalid ? "Paiement a corriger" : "Paiement en attente", state: paymentValidated ? "done" : paymentInvalid ? "error" : "current" },
+		{ label: "Paiement valide", state: paymentValidated ? "done" : "todo" },
+		{ label: "Commande fournisseur envoyee", state: supplierSent ? "done" : paymentValidated ? "current" : "todo" },
+		{ label: "Stock recu", state: stockReceived ? "done" : supplierSent ? "current" : "todo" },
+		{ label: "Livree", state: isDelivered ? "done" : stockReceived ? "current" : "todo" }
+	];
+};
+
+const timelineDotClass = (state: string) => {
+	if (state === "done") return "bg-[#28e08f] text-[#101820]";
+	if (state === "current") return "bg-[#101820] text-white";
+	if (state === "error") return "bg-red-500 text-white";
+	return "bg-slate-200 text-slate-500";
+};
 ---
 
 <Layout>
@@ -58,6 +105,43 @@ if (user) {
 			</section>
 
 			<PreorderBanner />
+
+			<section class="panel rounded-[1.6rem] p-5">
+				<div class="flex items-center justify-between gap-4">
+					<div>
+						<p class="text-lg font-black text-[#101820]">Suivi de mes commandes</p>
+						<p class="text-sm text-slate-600">La progression reelle de tes dernieres commandes.</p>
+					</div>
+					<a href="/profile" class="btn-secondary px-4 py-2 text-xs">Voir tout</a>
+				</div>
+				<div class="mt-5 grid gap-4 lg:grid-cols-2">
+					{latestOrders.length === 0 && <div class="rounded-2xl border border-dashed border-black/10 bg-white/60 px-4 py-5 text-sm font-bold text-slate-500">Aucune commande a suivre pour le moment.</div>}
+					{latestOrders.map((order) => (
+						<a href="/profile" class="interactive rounded-[1.25rem] border border-black/10 bg-white/65 p-4">
+							<div class="flex items-start justify-between gap-3">
+								<div>
+									<p class="text-sm font-black text-[#101820]">{order.order_number || "CMD-XXXX"}</p>
+									<p class="mt-1 text-xs font-bold text-slate-500">{order.payment_method === "virement" ? "Virement bancaire" : "Paiement liquide"}</p>
+								</div>
+								{order.payment_proof_status === "invalid" && <span class="rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-700">Preuve refusee</span>}
+							</div>
+							<div class="mt-4 space-y-2">
+								{orderTimeline(order).map((step) => (
+									<div class="flex items-center gap-3">
+										<span class={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[0.68rem] font-black ${timelineDotClass(step.state)}`}>
+											{step.state === "done" ? "✓" : step.state === "error" ? "!" : ""}
+										</span>
+										<span class={`text-xs font-black ${step.state === "todo" ? "text-slate-400" : step.state === "error" ? "text-red-700" : "text-[#101820]"}`}>{step.label}</span>
+									</div>
+								))}
+							</div>
+							{order.payment_proof_status === "invalid" && order.payment_proof_rejection_reason && (
+								<p class="mt-4 rounded-2xl bg-red-50 px-3 py-2 text-xs font-bold text-red-700">{order.payment_proof_rejection_reason}</p>
+							)}
+						</a>
+					))}
+				</div>
+			</section>
 
 			<section class="grid gap-5 lg:grid-cols-2">
 				<div class="panel rounded-[1.6rem] p-5">

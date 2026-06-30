@@ -153,6 +153,76 @@ export const getPaymentValidatedEmail = (params: { firstName?: string; orderNumb
 	return { subject, html, text };
 };
 
+export const getPaymentProofRejectedEmail = (params: {
+	firstName?: string;
+	orderNumber: string;
+	reason?: string;
+}) => {
+	const name = formatName(params.firstName);
+	const reason = params.reason?.trim();
+	const reasonText = reason || "La preuve envoyee ne permet pas de valider le paiement.";
+	const subject = `Preuve de paiement a renvoyer - ${params.orderNumber}`;
+	const html = `
+		<div style="font-family: Arial, sans-serif; color:#111827;">
+			<h2>Bonjour ${name}</h2>
+			<p>La preuve de paiement de votre commande <strong>${params.orderNumber}</strong> n'a pas pu etre validee.</p>
+			<p><strong>Raison:</strong> ${reasonText}</p>
+			<p>Merci de renvoyer une preuve lisible avec le bon montant et la bonne reference de commande.</p>
+			<p>
+				<a href="${link("/profile")}" style="display:inline-block;padding:10px 16px;background:#111827;color:#fff;border-radius:8px;text-decoration:none;">
+					Voir ma commande
+				</a>
+			</p>
+		</div>
+	`;
+	const text = `Bonjour ${name}. La preuve de paiement de la commande ${params.orderNumber} n'a pas pu etre validee. Raison: ${reasonText}. Merci de renvoyer une preuve lisible avec le bon montant.`;
+	return { subject, html, text };
+};
+
+export const getAdminNewOrderEmail = (params: {
+	orderNumber: string;
+	clientName?: string;
+	clientEmail?: string;
+	cartons: number;
+	total: number;
+	paymentMethod?: string;
+	paymentProofReceived?: boolean;
+	flavors?: { name: string; quantity: number }[];
+}) => {
+	const payment = params.paymentMethod === "virement" ? "virement bancaire" : "paiement liquide";
+	const proof =
+		params.paymentMethod === "virement"
+			? params.paymentProofReceived
+				? "preuve recue"
+				: "preuve manquante"
+			: "non necessaire";
+	const subject = `Nouvelle commande ${params.orderNumber}`;
+	const html = `
+		<div style="font-family: Arial, sans-serif; color:#111827;">
+			<h2>Nouvelle commande</h2>
+			<ul>
+				<li>Numero: <strong>${params.orderNumber}</strong></li>
+				<li>Client: <strong>${params.clientName || "Client"}</strong></li>
+				<li>Email: <strong>${params.clientEmail || "non renseigne"}</strong></li>
+				<li>Cartons: <strong>${params.cartons}</strong></li>
+				<li>Total: <strong>${money(params.total)}</strong></li>
+				<li>Paiement: <strong>${payment}</strong></li>
+				<li>Preuve: <strong>${proof}</strong></li>
+				${renderFlavorList(params.flavors)}
+			</ul>
+			<p>
+				<a href="${link("/admin")}" style="display:inline-block;padding:10px 16px;background:#111827;color:#fff;border-radius:8px;text-decoration:none;">
+					Ouvrir l'admin
+				</a>
+			</p>
+		</div>
+	`;
+	const text = `Nouvelle commande ${params.orderNumber}. Client: ${params.clientName || "Client"} <${
+		params.clientEmail || "non renseigne"
+	}>. Cartons ${params.cartons}. Total ${money(params.total)}. Paiement ${payment}. Preuve: ${proof}.${textFlavorList(params.flavors)}`;
+	return { subject, html, text };
+};
+
 export const getPreorderReminderEmail = (params: {
 	firstName?: string;
 	daysLeft?: number;
