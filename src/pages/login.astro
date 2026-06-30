@@ -5,34 +5,54 @@ import { createServerClient } from "../lib/supabaseServer";
 export const prerender = false;
 
 let error: string | null = null;
+let success: string | null = null;
 
 if (Astro.request.method === "POST") {
 	const supabase = createServerClient();
 	let email = "";
 	let password = "";
+	let authAction = "password";
 
 	try {
 		try {
 			const formData = await Astro.request.formData();
-			email = String(formData.get("email") || "");
+			email = String(formData.get("email") || "").trim();
 			password = String(formData.get("password") || "");
+			authAction = String(formData.get("auth_action") || "password");
 		} catch {
 			const body = (await Astro.request.json()) as Record<string, unknown>;
-			email = String(body.email || "");
+			email = String(body.email || "").trim();
 			password = String(body.password || "");
+			authAction = String(body.auth_action || "password");
 		}
 
-		const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-
-		if (signInError) {
-			error = signInError.message;
-		} else {
-			if (data?.session) {
-				const isSecure = Astro.url.protocol === "https:";
-				Astro.cookies.set("sb-access-token", data.session.access_token, { path: "/", httpOnly: true, sameSite: "lax", secure: isSecure });
-				Astro.cookies.set("sb-refresh-token", data.session.refresh_token, { path: "/", httpOnly: true, sameSite: "lax", secure: isSecure });
+		if (authAction === "magic") {
+			if (!email) {
+				error = "Entre ton email pour recevoir un lien magique.";
+			} else {
+				const { error: otpError } = await supabase.auth.signInWithOtp({
+					email,
+					options: {
+						emailRedirectTo: `${Astro.url.origin}/auth/callback`,
+						shouldCreateUser: false
+					}
+				});
+				if (otpError) error = otpError.message;
+				else success = "Si ce compte existe, un lien de connexion vient d'être envoyé.";
 			}
-			return Astro.redirect("/dashboard");
+		} else {
+			const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+			if (signInError) {
+				error = signInError.message;
+			} else {
+				if (data?.session) {
+					const isSecure = Astro.url.protocol === "https:";
+					Astro.cookies.set("sb-access-token", data.session.access_token, { path: "/", httpOnly: true, sameSite: "lax", secure: isSecure });
+					Astro.cookies.set("sb-refresh-token", data.session.refresh_token, { path: "/", httpOnly: true, sameSite: "lax", secure: isSecure });
+				}
+				return Astro.redirect("/dashboard");
+			}
 		}
 	} catch {
 		error = "Le formulaire n'a pas pu être lu. Merci de réessayer.";
@@ -46,7 +66,7 @@ if (Astro.request.method === "POST") {
 			<section class="hidden lg:block">
 				<p class="eyebrow">Espace membre</p>
 				<h1 class="mt-3 text-5xl font-black leading-none tracking-tight text-[#101820]">Bon retour dans ton espace commande.</h1>
-				<p class="mt-5 max-w-xl text-base leading-7 text-slate-600">Retrouve tes précommandes, tes notifications, tes codes promo et les infos de paiement au même endroit.</p>
+				<p class="mt-5 max-w-xl text-base leading-7 text-slate-600">Connecte-toi avec ton mot de passe ou reçois un lien magique par email.</p>
 			</section>
 
 			<section class="panel rounded-[2rem] p-6 sm:p-8">
@@ -54,15 +74,33 @@ if (Astro.request.method === "POST") {
 				<div class="space-y-1">
 					<p class="eyebrow">Connexion</p>
 					<h2 class="text-3xl font-black tracking-tight text-[#101820]">Se connecter</h2>
-					<p class="text-sm text-slate-600">Accède à ton dashboard en quelques secondes.</p>
+					<p class="text-sm text-slate-600">Mot de passe, lien magique ou récupération de compte.</p>
 				</div>
 
 				{error && <p class="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700">{error}</p>}
+				{success && <p class="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700">{success}</p>}
 
 				<form method="POST" class="mt-6 space-y-4">
+					<input type="hidden" name="auth_action" value="password" />
 					<input type="email" name="email" placeholder="Email" class="field text-sm" required />
 					<input type="password" name="password" placeholder="Mot de passe" class="field text-sm" required />
 					<button type="submit" class="btn-primary mt-2 w-full px-4 py-3 text-sm">Se connecter</button>
+				</form>
+
+				<div class="mt-4 flex items-center justify-between gap-3 text-sm">
+					<a href="/forgot-password" class="font-black text-[#116b4c] transition hover:text-[#101820]">Mot de passe oublié ?</a>
+				</div>
+
+				<div class="my-5 flex items-center gap-3">
+					<div class="h-px flex-1 bg-black/10"></div>
+					<span class="text-xs font-black uppercase tracking-[0.16em] text-slate-400">ou</span>
+					<div class="h-px flex-1 bg-black/10"></div>
+				</div>
+
+				<form method="POST" class="space-y-3">
+					<input type="hidden" name="auth_action" value="magic" />
+					<input type="email" name="email" placeholder="Email pour lien magique" class="field text-sm" required />
+					<button type="submit" class="btn-secondary w-full px-4 py-3 text-sm">Recevoir un lien magique</button>
 				</form>
 
 				<p class="mt-4 rounded-2xl bg-[#101820]/5 px-4 py-3 text-center text-xs font-bold text-slate-600">Je certifie avoir plus de 18 ans.</p>

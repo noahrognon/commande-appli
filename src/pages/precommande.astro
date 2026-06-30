@@ -188,6 +188,36 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 					</div>
 				</section>
 
+				<section class="panel hidden rounded-[1.6rem] p-5" id="payment-proof-section">
+					<div class="flex flex-col gap-2">
+						<p class="text-sm font-black text-[#101820]">Preuve de paiement</p>
+						<p class="text-xs font-bold text-slate-500">
+							Ajoute une capture du virement bancaire. Sans preuve, la commande ne pourra pas être validée.
+						</p>
+					</div>
+					<label class="mt-4 block cursor-pointer rounded-2xl border border-dashed border-black/20 bg-white/70 px-4 py-5 text-center transition hover:border-[#28e08f] hover:bg-white">
+						<input
+							type="file"
+							id="payment-proof-input"
+							accept="image/png,image/jpeg,image/webp"
+							class="sr-only"
+						/>
+						<span class="block text-sm font-black text-[#101820]">Importer la preuve</span>
+						<span class="mt-1 block text-xs font-bold text-slate-500">JPG, PNG ou WEBP - 6 Mo max</span>
+					</label>
+					<p class="mt-3 text-xs font-bold text-slate-500" id="payment-proof-feedback">
+						Aucun fichier ajouté.
+					</p>
+					<div id="payment-proof-preview" class="mt-4 hidden overflow-hidden rounded-2xl border border-black/10 bg-white">
+						<img
+							id="payment-proof-preview-img"
+							src=""
+							alt="Aperçu de la preuve de paiement"
+							class="max-h-80 w-full object-contain"
+						/>
+					</div>
+				</section>
+
 				<section class="panel rounded-[1.6rem] p-5">
 					<div class="flex items-center justify-between">
 						<div>
@@ -278,6 +308,45 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 			const promoInput = document.getElementById("promo-code-input");
 			const applyPromoBtn = document.getElementById("apply-promo-btn");
 			const promoFeedback = document.getElementById("promo-feedback");
+			const paymentProofInput = document.getElementById("payment-proof-input");
+			const paymentProofFeedback = document.getElementById("payment-proof-feedback");
+			const paymentProofSection = document.getElementById("payment-proof-section");
+			const paymentProofPreview = document.getElementById("payment-proof-preview");
+			const paymentProofPreviewImg = document.getElementById("payment-proof-preview-img");
+			let paymentProofPreviewUrl = "";
+
+			const syncPaymentProofVisibility = () => {
+				const selectedMethod = form.querySelector("input[name='payment_method']:checked")?.value || "";
+				const needsProof = selectedMethod === "virement";
+				if (paymentProofSection) paymentProofSection.classList.toggle("hidden", !needsProof);
+				if (!needsProof && paymentProofInput) {
+					paymentProofInput.value = "";
+					if (paymentProofFeedback) paymentProofFeedback.textContent = "Aucun fichier ajouté.";
+					if (paymentProofPreviewUrl) URL.revokeObjectURL(paymentProofPreviewUrl);
+					paymentProofPreviewUrl = "";
+					if (paymentProofPreviewImg) paymentProofPreviewImg.removeAttribute("src");
+					if (paymentProofPreview) paymentProofPreview.classList.add("hidden");
+				}
+			};
+
+			if (paymentProofInput && paymentProofFeedback) {
+				paymentProofInput.addEventListener("change", () => {
+					const file = paymentProofInput.files?.[0];
+					paymentProofFeedback.textContent = file
+						? `${file.name} prêt à être envoyé.`
+						: "Aucun fichier ajouté.";
+					if (paymentProofPreviewUrl) URL.revokeObjectURL(paymentProofPreviewUrl);
+					paymentProofPreviewUrl = "";
+					if (!file) {
+						if (paymentProofPreviewImg) paymentProofPreviewImg.removeAttribute("src");
+						if (paymentProofPreview) paymentProofPreview.classList.add("hidden");
+						return;
+					}
+					paymentProofPreviewUrl = URL.createObjectURL(file);
+					if (paymentProofPreviewImg) paymentProofPreviewImg.src = paymentProofPreviewUrl;
+					if (paymentProofPreview) paymentProofPreview.classList.remove("hidden");
+				});
+			}
 
 			if (repeatOrderDataEl?.textContent) {
 				try {
@@ -367,6 +436,7 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 						ibanInfo.classList.add("hidden");
 					}
 				}
+				if (target.name === "payment_method") syncPaymentProofVisibility();
 			});
 
 			form.addEventListener("click", (event) => {
@@ -414,13 +484,7 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 					ibanInfo.classList.remove("hidden");
 				}
 			}
-
-			const generateOrderNumber = () => {
-				const now = new Date();
-				const year = now.getFullYear();
-				const rand = Math.floor(Math.random() * 900 + 100);
-				return `CMD-${year}-${rand}`;
-			};
+			syncPaymentProofVisibility();
 
 			const addDays = (dateStr, days) => {
 				const d = new Date(dateStr);
@@ -509,6 +573,13 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 					return;
 				}
 
+				const paymentProofFile = paymentProofInput?.files?.[0] || null;
+				if (paymentMethod === "virement" && !paymentProofFile) {
+					setMessage("Ajoute une preuve de paiement avant de valider.");
+					submitBtn.disabled = false;
+					return;
+				}
+
 				if (selectedFlavors.length === 0) {
 					setMessage("Veuillez sélectionnér au moins un goût.");
 					submitBtn.disabled = false;
@@ -523,7 +594,6 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 				const { total } = renderTotals();
 				const estimated_delivery_start = addDays(preorderEnd, 14);
 				const estimated_delivery_end = addDays(preorderEnd, 17);
-				const order_number = generateOrderNumber();
 
 				let authToken = "";
 				if (projectRef && typeof window !== "undefined") {
@@ -539,6 +609,37 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 					}
 				}
 
+				let paymentProofPath = "";
+				if (paymentMethod === "virement") {
+					try {
+						submitBtn.textContent = "Envoi de la preuve...";
+						if (paymentProofFeedback) paymentProofFeedback.textContent = "Upload de la preuve en cours...";
+						const proofFormData = new FormData();
+						proofFormData.append("proof", paymentProofFile);
+						const proofResponse = await fetch("/api/upload-payment-proof", {
+							method: "POST",
+							headers: {
+								...(authToken ? { Authorization: `Bearer ${authToken}` } : {})
+							},
+							body: proofFormData
+						});
+						const proofResult = await proofResponse.json().catch(() => null);
+						if (!proofResponse.ok || !proofResult?.success || !proofResult?.path) {
+							throw new Error(proofResult?.error || "Upload impossible.");
+						}
+						paymentProofPath = proofResult.path;
+						if (paymentProofFeedback) paymentProofFeedback.textContent = "Preuve envoyée.";
+					} catch (error) {
+						console.error(error);
+						setMessage(error?.message || "Impossible d'envoyer la preuve de paiement.");
+						submitBtn.textContent = "Valider la précommande";
+						submitBtn.disabled = false;
+						return;
+					}
+				}
+
+				submitBtn.textContent = "Création de la commande...";
+
 				const response = await fetch("/api/create-order", {
 					method: "POST",
 					headers: {
@@ -552,9 +653,9 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 						preorder_id: preorderId,
 						estimated_delivery_start,
 						estimated_delivery_end,
-						order_number,
 						total,
-						promo_code: appliedPromo?.code || ""
+						promo_code: appliedPromo?.code || "",
+						payment_proof_path: paymentProofPath
 					})
 				});
 
@@ -567,6 +668,7 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 
 				if (!response.ok || !result?.success) {
 					setMessage(result?.error || "Impossible de creer la commande.");
+					submitBtn.textContent = "Valider la précommande";
 					submitBtn.disabled = false;
 					return;
 				}

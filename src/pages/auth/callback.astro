@@ -1,0 +1,77 @@
+---
+import Layout from "../../layouts/Layout.astro";
+
+export const prerender = false;
+
+const SUPABASE_URL = import.meta.env.SUPABASE_URL as string;
+const SUPABASE_ANON_KEY = import.meta.env.SUPABASE_ANON_KEY as string;
+---
+
+<Layout>
+	<main
+		class="app-shell flex min-h-[70vh] items-center justify-center px-4 py-10"
+		data-supabase-url={SUPABASE_URL}
+		data-supabase-anon-key={SUPABASE_ANON_KEY}
+	>
+		<section class="panel max-w-md rounded-[2rem] p-6 text-center sm:p-8">
+			<p class="eyebrow">Connexion</p>
+			<h1 class="mt-2 text-3xl font-black tracking-tight text-[#101820]">Connexion en cours</h1>
+			<p class="mt-3 text-sm leading-6 text-slate-600" id="auth-callback-message">Validation du lien magique...</p>
+		</section>
+	</main>
+
+	<script type="module">
+		import { createClient } from "@supabase/supabase-js";
+
+		const root = document.querySelector("[data-supabase-url]");
+		const message = document.getElementById("auth-callback-message");
+		const supabase = createClient(root.dataset.supabaseUrl, root.dataset.supabaseAnonKey);
+
+		const setMessage = (text) => {
+			if (message) message.textContent = text;
+		};
+
+		const sendSessionToServer = async (session) => {
+			const response = await fetch("/api/auth/set-session", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					access_token: session.access_token,
+					refresh_token: session.refresh_token
+				})
+			});
+			if (!response.ok) throw new Error("Impossible de créer la session.");
+		};
+
+		try {
+			const params = new URLSearchParams(window.location.search);
+			const code = params.get("code");
+			let session = null;
+
+			if (code) {
+				const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+				if (error) throw error;
+				session = data.session;
+			} else {
+				const hash = new URLSearchParams(window.location.hash.slice(1));
+				const accessToken = hash.get("access_token");
+				const refreshToken = hash.get("refresh_token");
+				if (accessToken && refreshToken) {
+					const { data, error } = await supabase.auth.setSession({
+						access_token: accessToken,
+						refresh_token: refreshToken
+					});
+					if (error) throw error;
+					session = data.session;
+				}
+			}
+
+			if (!session) throw new Error("Lien invalide ou expiré.");
+			await sendSessionToServer(session);
+			window.location.href = "/dashboard";
+		} catch (error) {
+			console.error(error);
+			setMessage("Lien invalide ou expiré. Demande un nouveau lien de connexion.");
+		}
+	</script>
+</Layout>

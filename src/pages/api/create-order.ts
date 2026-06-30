@@ -1,4 +1,5 @@
 import type { APIRoute } from "astro";
+import crypto from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { sendEmail } from "../../../server/lib/email.js";
 import { getOrderConfirmationEmail } from "../../lib/emailTemplates";
@@ -15,6 +16,17 @@ const adminClient = SUPABASE_SERVICE_ROLE_KEY
 	: null;
 
 export const prerender = false;
+
+const generateOrderNumber = () => {
+	const now = new Date();
+	const date = now.toISOString().slice(0, 10).replace(/-/g, "");
+	const shortId = crypto.randomUUID().replace(/-/g, "").slice(0, 8).toUpperCase();
+	return `CMD-${date}-${shortId}`;
+};
+
+const isOrderNumberDuplicate = (error: any) =>
+	error?.code === "23505" ||
+	String(error?.message || "").includes("orders_order_number_key");
 
 export const POST: APIRoute = async ({ request }) => {
 	try {
@@ -51,16 +63,20 @@ export const POST: APIRoute = async ({ request }) => {
 		const preorder_id = body.preorder_id as string;
 		const flavors = Array.isArray(body.flavors) ? body.flavors : [];
 		const promo_code = String(body.promo_code || "");
-		const requestedOrderNumber = body.order_number as string;
-		const order_number =
-			requestedOrderNumber ||
-			`CMD-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`;
+		const payment_proof_path = String(body.payment_proof_path || "").trim();
+		let order_number = generateOrderNumber();
 
 		if (!preorder_id) {
 			return new Response(JSON.stringify({ success: false, error: "Precommande manquante." }), { status: 400 });
 		}
 		if (!payment_method) {
 			return new Response(JSON.stringify({ success: false, error: "Mode de paiement obligatoire." }), { status: 400 });
+		}
+		if (payment_method === "virement" && (!payment_proof_path || !payment_proof_path.startsWith(`${user.id}/`))) {
+			return new Response(JSON.stringify({ success: false, error: "Preuve de paiement obligatoire." }), { status: 400 });
+		}
+		if (payment_method !== "virement" && payment_proof_path && !payment_proof_path.startsWith(`${user.id}/`)) {
+			return new Response(JSON.stringify({ success: false, error: "Preuve de paiement invalide." }), { status: 400 });
 		}
 		if (cartons < 1) {
 			return new Response(JSON.stringify({ success: false, error: "Au moins 1 carton requis." }), { status: 400 });
@@ -120,24 +136,34 @@ export const POST: APIRoute = async ({ request }) => {
 		const estimated_delivery_start = addDays(preorder.end_date, 14);
 		const estimated_delivery_end = addDays(preorder.end_date, 17);
 
-		const { data: orderInsert, error: orderError } = await adminClient
-			.from("orders")
-			.insert({
-				user_id: user.id,
-				preorder_id,
-				cartons,
-				total,
-				payment_method,
-				status: "pending",
-				estimated_delivery_start,
-				estimated_delivery_end,
-				order_number,
-				promo_code_id: promo?.id || null,
-				promo_code: promo?.code || null,
-				promo_discount_amount: pricing.promoDiscountAmount
-			})
-			.select("id")
-			.single();
+		let orderInsert: { id: string } | null = null;
+		let orderError: any = null;
+		for (let attempt = 0; attempt < 3; attempt += 1) {
+			order_number = generateOrderNumber();
+			const result = await adminClient
+				.from("orders")
+				.insert({
+					user_id: user.id,
+					preorder_id,
+					cartons,
+					total,
+					payment_method,
+					status: "pending",
+					estimated_delivery_start,
+					estimated_delivery_end,
+					order_number,
+					promo_code_id: promo?.id || null,
+					promo_code: promo?.code || null,
+					promo_discount_amount: pricing.promoDiscountAmount,
+					payment_proof_path,
+					payment_proof_uploaded_at: new Date().toISOString()
+				})
+				.select("id")
+				.single();
+			orderInsert = result.data;
+			orderError = result.error;
+			if (!orderError || !isOrderNumberDuplicate(orderError)) break;
+		}
 
 		if (orderError || !orderInsert?.id) {
 			return new Response(JSON.stringify({ success: false, error: orderError?.message || "Creation commande impossible." }), { status: 400 });
