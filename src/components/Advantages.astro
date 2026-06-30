@@ -1,43 +1,25 @@
 ---
 const advantages = [
-	{
-		title: "Rapidite",
-		desc: "Livraison optimisee"
-	},
-	{
-		title: "Codes promo",
-		desc: "Remises ponctuelles"
-	},
-	{
-		title: "Paiement simple",
-		desc: "Virement ou liquide"
-	},
-	{
-		title: "Zero rupture",
-		desc: "Stock garanti"
-	}
+	{ title: "Prix lisible", desc: "Tu vois le total avant de valider." },
+	{ title: "Codes promo", desc: "Les remises actives s'appliquent directement." },
+	{ title: "Suivi clair", desc: "Commande, paiement et livraison restent visibles." },
+	{ title: "Commande rapide", desc: "Tu peux repartir d'une ancienne commande." }
 ];
 ---
 
-<section class="bg-white px-4 py-12 sm:px-6 lg:px-8">
-	<div class="mx-auto flex max-w-4xl flex-col gap-6">
+<section class="bg-[#fffdf7] px-4 py-14 sm:px-6 lg:px-8">
+	<div class="mx-auto flex max-w-6xl flex-col gap-8">
 		<header class="space-y-2 text-center">
-			<h2 class="bg-gradient-to-r from-[#3d7fff] via-[#9d55ff] to-[#d94bff] bg-clip-text text-2xl font-semibold text-transparent">
-				Vos avantages
-			</h2>
-			<p class="text-sm text-slate-600 sm:text-base">Une experience optimisee pour vous</p>
+			<p class="eyebrow">Avantages</p>
+			<h2 class="text-3xl font-black tracking-tight text-[#101820] sm:text-4xl">L'expérience doit donner envie de revenir.</h2>
+			<p class="text-sm text-slate-600 sm:text-base">Prix lisibles, suivi clair, commandes rapides.</p>
 		</header>
-
-		<div class="grid grid-cols-1 gap-5 lg:grid-cols-2">
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
 			{advantages.map((item) => (
-				<div class="rounded-3xl bg-gradient-to-br from-[#4c9dff]/35 via-[#7f63ff]/30 to-[#f087ff]/35 p-[1px] shadow-[0_18px_45px_-20px_rgba(73,70,255,0.55)]">
-					<div class="flex h-full flex-col items-center justify-center gap-3 rounded-3xl bg-white/70 px-6 py-8 text-center backdrop-blur">
-						<div class="inline-flex h-12 w-12 items-center justify-center rounded-full border border-[#6ea6ff]/60 bg-white/80 text-sm font-semibold text-[#2c7bff] shadow-sm">
-							<span>+</span>
-						</div>
-						<h3 class="text-lg font-semibold text-slate-900">{item.title}</h3>
-						<p class="text-sm text-slate-600 sm:text-base">{item.desc}</p>
-					</div>
+				<div class="panel interactive rounded-[1.5rem] p-5">
+					<div class="mb-8 h-2 w-12 rounded-full bg-[#28e08f]"></div>
+					<h3 class="text-lg font-black text-[#101820]">{item.title}</h3>
+					<p class="mt-2 text-sm text-slate-600">{item.desc}</p>
 				</div>
 			))}
 		</div>

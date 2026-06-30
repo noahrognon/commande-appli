@@ -12,15 +12,12 @@ const links = [
 ];
 ---
 
-<nav class="fixed inset-x-0 bottom-4 z-40">
-	<div class="mx-auto flex max-w-lg items-center justify-between rounded-2xl bg-white/85 px-3 py-2 shadow-[0_18px_35px_-22px_rgba(73,70,255,0.55)] ring-1 ring-slate-100 backdrop-blur">
+<nav class="fixed inset-x-0 bottom-4 z-40 px-3">
+	<div class="mx-auto flex max-w-lg items-center justify-between rounded-full border border-black/10 bg-[#101820]/94 px-2 py-2 shadow-[0_22px_55px_-28px_rgba(16,24,32,0.75)] backdrop-blur-xl">
 		{links.map((link) => (
-			<a
-				href={link.href}
-				class="flex flex-1 flex-col items-center gap-1 rounded-xl px-2 py-2 text-xs font-semibold text-slate-500 transition hover:text-[#2d7dff]"
-			>
-				<span class="flex h-8 w-8 items-center justify-center rounded-xl bg-slate-50 shadow-inner">
-					<img src={link.icon} alt="" class="h-4 w-4" loading="lazy" />
+			<a href={link.href} class="group flex flex-1 flex-col items-center gap-1 rounded-full px-2 py-2 text-xs font-black text-white/55 transition hover:bg-white/8 hover:text-white">
+				<span class="flex h-8 w-8 items-center justify-center rounded-full bg-white/8 transition group-hover:bg-[#28e08f]">
+					<img src={link.icon} alt="" class="h-4 w-4 transition group-hover:scale-110" loading="lazy" />
 				</span>
 				<span>{link.label}</span>
 			</a>

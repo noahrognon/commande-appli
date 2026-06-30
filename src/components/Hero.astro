@@ -2,48 +2,61 @@
 import heroImg from "../assets/hero.webp";
 ---
 
-<section class="relative overflow-hidden bg-gradient-to-br from-[#2c8cff] via-[#7a4bff] to-[#d74bff] text-white">
-	<div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.18),transparent_35%),radial-gradient(circle_at_80%_0%,rgba(255,255,255,0.12),transparent_30%)]"></div>
-	<div class="relative mx-auto flex w-full max-w-6xl flex-col gap-10 px-4 py-12 sm:px-6 lg:flex-row lg:items-center lg:gap-12 lg:px-8 lg:py-16">
-		<div class="flex-1 space-y-6">
-			<div class="inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-2 text-sm font-medium shadow-sm ring-1 ring-white/25 backdrop-blur">
-				<span>Plateforme de prÃ©commande</span>
+<section class="relative overflow-hidden bg-[#fffdf7] text-[#101820]">
+	<div class="absolute inset-0 soft-grid opacity-70"></div>
+	<div class="relative mx-auto grid w-full max-w-6xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:px-8 lg:py-16">
+		<div class="space-y-7">
+			<div class="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/70 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#116b4c] shadow-sm">
+				<span class="h-2 w-2 rounded-full bg-[#28e08f]"></span>
+				<span>Précommande par vagues</span>
 			</div>
-			<div class="space-y-3">
-				<h1 class="text-3xl font-bold leading-tight sm:text-4xl lg:text-5xl">
-					PrÃ©commandez vos puffs
-					<span class="block font-semibold text-white/90">sans rupture de stock</span>
+			<div class="space-y-4">
+				<h1 class="max-w-4xl text-4xl font-black leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
+					Réserve ton stock avant tout le monde.
 				</h1>
-				<p class="max-w-2xl text-base text-white/90 sm:text-lg">
-					Une plateforme moderne qui regroupe les prÃ©commandes pour garantir vos goÃ»ts prÃ©fÃ©rÃ©s avec des remises automatiques.
+				<p class="max-w-2xl text-base leading-7 text-slate-600 sm:text-lg">
+					Les commandes sont regroupées, les goûts sont sécurisés, les prix restent propres. Tu choisis, on centralise, tu récupères sans courir après le stock.
 				</p>
 			</div>
 			<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
-				<a
-					href="/signup"
-					class="inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-2.5 text-base font-semibold text-[#215bff] shadow-lg shadow-blue-500/30 transition hover:-translate-y-0.5 hover:shadow-blue-500/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-				>
-					<span class="text-lg">ðŸ”—</span>
-					<span>CrÃ©er un compte</span>
+				<a href="/register" class="btn-primary px-5 py-3 text-base">
+					<span>Créer un compte</span>
+					<span aria-hidden="true">→</span>
 				</a>
-				<a
-					href="/precommande"
-					class="inline-flex items-center justify-center gap-2 rounded-xl border border-white/40 bg-white/10 px-4 py-2.5 text-base font-semibold text-white transition hover:-translate-y-0.5 hover:bg-white/15 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-				>
-					<span>Commencer une precoommande</span>
-					<span class="text-lg">â€º</span>
-				</a>
+				<a href="/precommande" class="btn-secondary px-5 py-3 text-base">Commander maintenant</a>
+			</div>
+			<div class="grid grid-cols-3 gap-3 pt-2">
+				<div class="border-l border-black/10 pl-4">
+					<p class="text-2xl font-black">85€</p>
+					<p class="text-xs font-bold text-slate-500">par carton</p>
+				</div>
+				<div class="border-l border-black/10 pl-4">
+					<p class="text-2xl font-black">10</p>
+					<p class="text-xs font-bold text-slate-500">goûts max</p>
+				</div>
+				<div class="border-l border-black/10 pl-4">
+					<p class="text-2xl font-black">24/7</p>
+					<p class="text-xs font-bold text-slate-500">suivi en ligne</p>
+				</div>
 			</div>
 		</div>
 
-		<div class="flex-1">
-			<div class="overflow-hidden rounded-3xl border border-white/40 shadow-2xl shadow-blue-500/25">
-				<img
-					src={heroImg.src}
-					alt="Illustration de prÃ©commande sur mobile"
-					class="w-full object-cover"
-					loading="lazy"
-				/>
+		<div class="relative">
+			<div class="absolute -right-4 -top-4 z-10 rounded-full bg-[#28e08f] px-4 py-2 text-xs font-black uppercase tracking-[0.14em] text-[#101820] shadow-xl">
+				Stock réservé
+			</div>
+			<div class="panel interactive overflow-hidden rounded-[2rem] p-3">
+				<img src={heroImg.src} alt="Précommande sur mobile" class="aspect-[4/5] w-full rounded-[1.4rem] object-cover" loading="lazy" />
+				<div class="grid grid-cols-2 gap-3 p-3">
+					<div class="rounded-2xl bg-[#101820] p-4 text-white">
+						<p class="text-xs font-bold text-white/55">Statut</p>
+						<p class="mt-1 text-lg font-black">Ouvert</p>
+					</div>
+					<div class="rounded-2xl bg-[#28e08f] p-4 text-[#101820]">
+						<p class="text-xs font-bold text-[#116b4c]">Livraison</p>
+						<p class="mt-1 text-lg font-black">Estimée</p>
+					</div>
+				</div>
 			</div>
 		</div>
 	</div>

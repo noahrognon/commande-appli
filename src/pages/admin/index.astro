@@ -303,39 +303,24 @@ const formatNumber = (value: number) => Math.round(value).toString();
 ---
 
 <Layout>
-	<main
-		class="relative min-h-screen bg-gradient-to-b from-white via-[#f2f4ff] to-[#f6ecff] px-4 py-10 sm:px-6 lg:px-8"
-	>
-		<div
-			class="pointer-events-none absolute -top-32 left-6 h-64 w-64 rounded-full bg-[#7a7dff]/30 blur-[120px]"
-		>
-		</div>
-		<div
-			class="pointer-events-none absolute -bottom-32 right-8 h-72 w-72 rounded-full bg-[#f58cff]/30 blur-[140px]"
-		>
-		</div>
-
-		<div class="mx-auto flex max-w-6xl flex-col gap-8">
-			<header class="relative z-10 flex flex-col gap-2 fade-in">
-				<p
-					class="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500"
-				>
-					Console admin
-				</p>
-				<h1
-					class="text-3xl font-semibold text-slate-900 sm:text-4xl admin-title"
-				>
-					Centre de pilotage
-				</h1>
-				<p class="text-sm text-slate-600">
-					Suivi des commandes, des precommandes et des performances en
-					temps reel.
-				</p>
+	<main class="admin-shell min-h-screen px-4 py-8 sm:px-6 lg:px-8">
+		<div class="mx-auto flex max-w-7xl flex-col gap-6">
+			<header class="admin-hero">
+				<div>
+					<p class="admin-eyebrow">Console admin</p>
+					<h1 class="admin-title">Centre de pilotage</h1>
+					<p class="admin-subtitle">
+						Suivi des commandes, précommandes, marges, codes promo et exports.
+					</p>
+				</div>
+				<div class="admin-hero-card">
+					<p class="admin-hero-label">Session</p>
+					<p class="admin-hero-value">{admin.email}</p>
+					<a href="/admin/logout" class="admin-logout">Se déconnecter</a>
+				</div>
 			</header>
 
-			<nav
-				class="relative z-10 flex flex-wrap gap-2 rounded-3xl bg-white/80 p-2 shadow-lg shadow-slate-200/60 ring-1 ring-white/50 backdrop-blur fade-in"
-			>
+			<nav class="admin-tabs">
 				<button
 					class="tab-button tab-active"
 					data-tab-target="dashboard"
@@ -350,12 +335,17 @@ const formatNumber = (value: number) => Math.round(value).toString();
 				>
 				<button
 					class="tab-button"
+					data-tab-target="promos"
+					type="button">Codes promo</button
+				>
+				<button
+					class="tab-button"
 					data-tab-target="preorders"
-					type="button">Precommandes</button
+					type="button">Précommandes</button
 				>
 				<a
 					href="/admin/logout"
-					class="ml-auto inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-xs font-semibold text-slate-500 transition hover:border-slate-300 hover:text-slate-700"
+					class="admin-tabs-link"
 				>
 					Sortie
 				</a>
@@ -683,6 +673,21 @@ const formatNumber = (value: number) => Math.round(value).toString();
 					</div>
 				</div>
 
+			</section>
+
+			<section
+				data-tab-panel="promos"
+				class="relative z-10 hidden flex-col gap-6"
+			>
+				<div class="admin-section-header">
+					<div>
+						<p class="admin-eyebrow">Offres commerciales</p>
+						<h2>Codes promo</h2>
+						<p>Crée, active ou coupe les offres sans les mélanger au pilotage business.</p>
+					</div>
+					<span>{formatNumber(promoCodes.length)} code(s)</span>
+				</div>
+
 				<div class="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
 					<div
 						class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50"
@@ -854,6 +859,12 @@ const formatNumber = (value: number) => Math.round(value).toString();
 					</div>
 				</div>
 
+			</section>
+
+			<section
+				data-tab-panel="dashboard"
+				class="relative z-10 flex flex-col gap-8"
+			>
 				<div
 					class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50"
 				>
@@ -929,6 +940,15 @@ const formatNumber = (value: number) => Math.round(value).toString();
 				data-tab-panel="orders"
 				class="relative z-10 hidden flex-col gap-6"
 			>
+				<div class="admin-section-header">
+					<div>
+						<p class="admin-eyebrow">Traitement client</p>
+						<h2>Commandes</h2>
+						<p>Filtre, inspecte, confirme, livre ou annule les commandes depuis une seule file.</p>
+					</div>
+					<span>{formatNumber(orders.length)} commande(s)</span>
+				</div>
+
 				<div
 					class="rounded-3xl bg-white/85 p-5 shadow-lg shadow-slate-200/60 ring-1 ring-white/50"
 				>
@@ -1246,35 +1266,13 @@ const formatNumber = (value: number) => Math.round(value).toString();
 				data-tab-panel="preorders"
 				class="relative z-10 hidden flex-col gap-6"
 			>
-				<div
-					class="rounded-3xl bg-gradient-to-r from-[#eef2ff] via-white to-[#f9f0ff] p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/60"
-				>
-					<div class="flex items-center gap-4">
-						<div
-							class="flex h-12 w-12 items-center justify-center rounded-2xl bg-white shadow"
-						>
-							<svg
-								class="h-5 w-5 text-[#7a4bff]"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							>
-								<circle cx="12" cy="12" r="9"></circle>
-								<path d="M12 7v5l3 3"></path>
-							</svg>
-						</div>
-						<div>
-							<p class="text-sm font-semibold text-slate-900">
-								Gestion des precommandes
-							</p>
-							<p class="text-xs text-slate-600">
-								Suivez le cycle en cours et ajustez la fenetre.
-							</p>
-						</div>
+				<div class="admin-section-header">
+					<div>
+						<p class="admin-eyebrow">Cycle de vente</p>
+						<h2>Précommandes</h2>
+						<p>Ouvre une vague, annonce aux clients, clôture, prépare le fournisseur puis notifie le stock reçu.</p>
 					</div>
+					<span>{openPreorder ? "Vague ouverte" : "Aucune vague ouverte"}</span>
 				</div>
 
 				<div class="grid gap-4 md:grid-cols-3">
@@ -1305,50 +1303,66 @@ const formatNumber = (value: number) => Math.round(value).toString();
 					</div>
 				</div>
 
-				<div class="flex flex-wrap gap-3">
-					<button
-						type="button"
-						class="action-button action-primary"
-						data-action="send-open-email"
-						data-preorder-id={openPreorder?.id || ""}
-						disabled={!openPreorder}
-					>
-						Annoncer l'ouverture par email
-					</button>
-					<button
-						type="button"
-						class="action-button action-danger"
-						data-action="close-preorder"
-						disabled={!openPreorder}
-					>
-						Cloturer les precommandes
-					</button>
-					<button
-						type="button"
-						class="action-button action-primary"
-						data-action="extend-preorder"
-						disabled={!openPreorder}
-					>
-						Prolonger de 24h
-					</button>
-					<button
-						type="button"
-						class="action-button action-primary"
-						data-action="send-supplier-email"
-						data-preorder-id={openPreorder?.id || ""}
-						disabled={!openPreorder}
-					>
-						Commande fournisseur envoyee
-					</button>
-					<button
-						type="button"
-						class="action-button action-success"
-						data-action="send-stock-email"
-						data-preorder-id={openPreorder?.id || ""}
-						disabled={!openPreorder}
-					>
-						Stock recu / pret a livrer
-					</button>
+				<div class="admin-action-board">
+					<div>
+						<p class="admin-action-title">Communication</p>
+						<p class="admin-action-sub">Prévenir les clients au bon moment.</p>
+						<button
+							type="button"
+							class="action-button action-primary"
+							data-action="send-open-email"
+							data-preorder-id={openPreorder?.id || ""}
+							disabled={!openPreorder}
+						>
+							Annoncer l'ouverture
+						</button>
+					</div>
+					<div>
+						<p class="admin-action-title">Fenêtre de vente</p>
+						<p class="admin-action-sub">Ajuster la vague active.</p>
+						<div class="flex flex-wrap gap-2">
+							<button
+								type="button"
+								class="action-button action-danger"
+								data-action="close-preorder"
+								disabled={!openPreorder}
+							>
+								Clôturer
+							</button>
+							<button
+								type="button"
+								class="action-button action-primary"
+								data-action="extend-preorder"
+								disabled={!openPreorder}
+							>
+								+24h
+							</button>
+						</div>
+					</div>
+					<div>
+						<p class="admin-action-title">Après clôture</p>
+						<p class="admin-action-sub">Informer sur fournisseur et disponibilité.</p>
+						<div class="flex flex-wrap gap-2">
+							<button
+								type="button"
+								class="action-button action-primary"
+								data-action="send-supplier-email"
+								data-preorder-id={openPreorder?.id || ""}
+								disabled={!openPreorder}
+							>
+								Fournisseur envoyé
+							</button>
+							<button
+								type="button"
+								class="action-button action-success"
+								data-action="send-stock-email"
+								data-preorder-id={openPreorder?.id || ""}
+								disabled={!openPreorder}
+							>
+								Stock reçu
+							</button>
+						</div>
+					</div>
 				</div>
 				<p class="text-xs text-slate-500" data-admin-email-status></p>
 
@@ -1996,160 +2010,350 @@ const formatNumber = (value: number) => Math.round(value).toString();
 </script>
 
 <style>
+	.admin-shell {
+		background:
+			linear-gradient(180deg, rgba(255, 253, 247, 0.98), rgba(246, 244, 238, 1)),
+			linear-gradient(135deg, rgba(40, 224, 143, 0.08), transparent 34%),
+			linear-gradient(315deg, rgba(36, 87, 255, 0.08), transparent 28%);
+		color: #101820;
+	}
+
+	.admin-hero {
+		display: grid;
+		gap: 1rem;
+		align-items: stretch;
+		border: 1px solid rgba(16, 24, 32, 0.1);
+		border-radius: 2rem;
+		background: rgba(255, 253, 247, 0.86);
+		padding: 1.25rem;
+		box-shadow: 0 24px 70px rgba(16, 24, 32, 0.08);
+		backdrop-filter: blur(18px);
+	}
+
+	@media (min-width: 768px) {
+		.admin-hero {
+			grid-template-columns: 1fr minmax(260px, 360px);
+			padding: 1.6rem;
+		}
+	}
+
+	.admin-eyebrow {
+		font-size: 0.72rem;
+		font-weight: 900;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: #116b4c;
+	}
+
+	.admin-title {
+		margin-top: 0.35rem;
+		font-size: clamp(2.3rem, 5vw, 4.4rem);
+		font-weight: 950;
+		line-height: 0.92;
+		letter-spacing: -0.04em;
+		color: #101820;
+	}
+
+	.admin-subtitle {
+		margin-top: 0.85rem;
+		max-width: 48rem;
+		font-size: 0.95rem;
+		line-height: 1.7;
+		color: #64706f;
+	}
+
+	.admin-hero-card {
+		display: flex;
+		flex-direction: column;
+		justify-content: space-between;
+		border-radius: 1.5rem;
+		background: #101820;
+		padding: 1.15rem;
+		color: white;
+	}
+
+	.admin-hero-label {
+		font-size: 0.68rem;
+		font-weight: 900;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: #28e08f;
+	}
+
+	.admin-hero-value {
+		margin-top: 0.8rem;
+		overflow-wrap: anywhere;
+		font-size: 0.95rem;
+		font-weight: 800;
+		color: rgba(255, 255, 255, 0.82);
+	}
+
+	.admin-logout,
+	.admin-tabs-link {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		border-radius: 999px;
+		font-size: 0.78rem;
+		font-weight: 900;
+		transition:
+			transform 0.18s ease,
+			background-color 0.18s ease,
+			color 0.18s ease,
+			border-color 0.18s ease;
+	}
+
+	.admin-logout {
+		margin-top: 1.25rem;
+		width: fit-content;
+		background: rgba(255, 255, 255, 0.1);
+		padding: 0.65rem 1rem;
+		color: white;
+	}
+
+	.admin-logout:hover,
+	.admin-tabs-link:hover {
+		transform: translateY(-2px);
+	}
+
+	.admin-tabs {
+		position: sticky;
+		top: 4.35rem;
+		z-index: 40;
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.45rem;
+		border: 1px solid rgba(16, 24, 32, 0.1);
+		border-radius: 999px;
+		background: rgba(255, 253, 247, 0.9);
+		padding: 0.45rem;
+		box-shadow: 0 18px 40px rgba(16, 24, 32, 0.08);
+		backdrop-filter: blur(18px);
+	}
+
 	.tab-button {
 		position: relative;
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		border-radius: 999px;
-		padding: 0.65rem 1.4rem;
+		padding: 0.75rem 1.2rem;
 		font-size: 0.8rem;
-		font-weight: 600;
-		color: #5b6475;
-		transition: all 0.2s ease;
+		font-weight: 900;
+		color: #64706f;
+		transition:
+			transform 0.18s ease,
+			background-color 0.18s ease,
+			color 0.18s ease;
 	}
 
 	.tab-button:hover {
-		color: #1f2937;
+		transform: translateY(-1px);
+		color: #101820;
 	}
 
 	.tab-active {
-		background: linear-gradient(
-			120deg,
-			rgba(79, 111, 255, 0.18),
-			rgba(210, 75, 255, 0.18)
-		);
-		color: #312e81;
-		box-shadow: 0 10px 25px rgba(99, 102, 241, 0.2);
-		background-size: 200% 200%;
-		animation: tabShimmer 3s ease infinite;
+		background: #101820;
+		color: white;
+		box-shadow: 0 12px 28px rgba(16, 24, 32, 0.18);
 	}
 
-	.admin-title {
-		background: linear-gradient(120deg, #2d7dff, #7a4bff, #ff7ac6);
-		background-size: 200% 200%;
-		-webkit-background-clip: text;
-		color: transparent;
-		animation: titleShift 6s ease infinite;
+	.admin-tabs-link {
+		margin-left: auto;
+		border: 1px solid rgba(16, 24, 32, 0.12);
+		padding: 0.72rem 1.1rem;
+		color: #64706f;
 	}
 
-	.fade-in {
-		animation: fadeUp 0.6s ease both;
+	.admin-tabs-link:hover {
+		border-color: rgba(16, 24, 32, 0.32);
+		color: #101820;
 	}
 
-	.stat-card {
+	.admin-section-header {
 		display: flex;
 		flex-direction: column;
-		gap: 0.35rem;
-		border-radius: 1.5rem;
-		background: rgba(255, 255, 255, 0.85);
+		gap: 1rem;
+		justify-content: space-between;
+		border: 1px solid rgba(16, 24, 32, 0.1);
+		border-radius: 1.7rem;
+		background: #101820;
 		padding: 1.25rem;
-		box-shadow: 0 16px 30px rgba(148, 163, 184, 0.15);
+		color: white;
+		box-shadow: 0 24px 60px rgba(16, 24, 32, 0.16);
 	}
 
-	.stat-label {
-		font-size: 0.75rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.2em;
+	@media (min-width: 768px) {
+		.admin-section-header {
+			flex-direction: row;
+			align-items: end;
+			padding: 1.45rem;
+		}
 	}
 
-	.stat-value {
-		font-size: 1.7rem;
-		font-weight: 600;
-		color: #0f172a;
+	.admin-section-header .admin-eyebrow {
+		color: #28e08f;
 	}
 
-	.stat-sub {
-		font-size: 0.75rem;
-		color: #64748b;
+	.admin-section-header h2 {
+		margin-top: 0.35rem;
+		font-size: clamp(1.8rem, 3vw, 2.8rem);
+		font-weight: 950;
+		line-height: 1;
+		letter-spacing: -0.04em;
 	}
 
-	.trend-badge {
+	.admin-section-header p:not(.admin-eyebrow) {
+		margin-top: 0.55rem;
+		max-width: 48rem;
+		font-size: 0.9rem;
+		line-height: 1.6;
+		color: rgba(255, 255, 255, 0.65);
+	}
+
+	.admin-section-header > span {
+		width: fit-content;
 		border-radius: 999px;
-		padding: 0.25rem 0.6rem;
-		font-size: 0.7rem;
-		font-weight: 600;
+		background: rgba(40, 224, 143, 0.16);
+		padding: 0.65rem 1rem;
+		font-size: 0.78rem;
+		font-weight: 950;
+		color: #28e08f;
 	}
 
-	.trend-up {
-		background: rgba(34, 197, 94, 0.12);
-		color: #15803d;
+	.admin-action-board {
+		display: grid;
+		gap: 1rem;
+		grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
 	}
 
-	.trend-down {
-		background: rgba(239, 68, 68, 0.12);
-		color: #b91c1c;
+	.admin-action-board > div {
+		border: 1px solid rgba(16, 24, 32, 0.1);
+		border-radius: 1.4rem;
+		background: rgba(255, 253, 247, 0.88);
+		padding: 1rem;
+		box-shadow: 0 18px 48px rgba(16, 24, 32, 0.08);
+	}
+
+	.admin-action-title {
+		font-size: 0.95rem;
+		font-weight: 950;
+		color: #101820;
+	}
+
+	.admin-action-sub {
+		margin: 0.25rem 0 1rem;
+		font-size: 0.78rem;
+		font-weight: 700;
+		line-height: 1.5;
+		color: #64706f;
+	}
+
+	.stat-card,
+	.metric-card,
+	.order-card,
+	[data-tab-panel] > div[class*="rounded-3xl"],
+	[data-tab-panel] > div[class*="rounded-2xl"] {
+		border: 1px solid rgba(16, 24, 32, 0.1) !important;
+		background: rgba(255, 253, 247, 0.88) !important;
+		box-shadow: 0 18px 48px rgba(16, 24, 32, 0.08) !important;
+		backdrop-filter: blur(18px);
+	}
+
+	.stat-card,
+	.metric-card {
+		display: flex;
+		flex-direction: column;
+		gap: 0.45rem;
+		border-radius: 1.35rem;
+		padding: 1.2rem;
+		transition:
+			transform 0.2s ease,
+			box-shadow 0.2s ease,
+			border-color 0.2s ease;
+	}
+
+	.stat-card:hover,
+	.metric-card:hover,
+	.order-card:hover {
+		transform: translateY(-3px);
+		border-color: rgba(40, 224, 143, 0.5) !important;
+		box-shadow: 0 26px 65px rgba(16, 24, 32, 0.12) !important;
+	}
+
+	.stat-label,
+	.metric-label {
+		font-size: 0.68rem;
+		font-weight: 950;
+		text-transform: uppercase;
+		letter-spacing: 0.16em;
+		color: #116b4c !important;
+	}
+
+	.stat-value,
+	.metric-value {
+		margin-top: 0.1rem;
+		font-size: clamp(1.65rem, 3vw, 2.15rem);
+		font-weight: 950;
+		line-height: 1;
+		letter-spacing: -0.04em;
+		color: #101820;
+	}
+
+	.stat-sub,
+	.metric-sub {
+		font-size: 0.78rem;
+		font-weight: 700;
+		color: #64706f;
 	}
 
 	.filter-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		border-radius: 999px;
-		border: 1px solid #e2e8f0;
-		padding: 0.5rem 1rem;
+		border: 1px solid rgba(16, 24, 32, 0.12);
+		background: rgba(255, 255, 255, 0.62);
+		padding: 0.62rem 1rem;
 		font-size: 0.75rem;
-		font-weight: 600;
-		color: #64748b;
-		transition: all 0.2s ease;
+		font-weight: 900;
+		color: #64706f;
+		transition:
+			transform 0.18s ease,
+			border-color 0.18s ease,
+			background-color 0.18s ease,
+			color 0.18s ease;
 	}
 
 	.filter-button:hover {
-		border-color: #cbd5f5;
-		color: #334155;
+		transform: translateY(-2px);
+		border-color: rgba(16, 24, 32, 0.3);
+		background: white;
+		color: #101820;
 	}
 
 	.filter-active {
-		background: linear-gradient(
-			120deg,
-			rgba(79, 111, 255, 0.2),
-			rgba(210, 75, 255, 0.2)
-		);
-		color: #312e81;
-		border-color: transparent;
-	}
-
-	.badge {
-		border-radius: 999px;
-		padding: 0.35rem 0.75rem;
-		font-size: 0.7rem;
-		font-weight: 600;
-	}
-
-	.badge-warning {
-		background: rgba(245, 158, 11, 0.15);
-		color: #b45309;
-	}
-
-	.badge-info {
-		background: rgba(59, 130, 246, 0.15);
-		color: #1d4ed8;
-	}
-
-	.badge-success {
-		background: rgba(34, 197, 94, 0.15);
-		color: #15803d;
-	}
-
-	.badge-error {
-		background: rgba(239, 68, 68, 0.15);
-		color: #b91c1c;
-	}
-
-	.flavor-pill {
-		border-radius: 999px;
-		background: #f1f5f9;
-		padding: 0.3rem 0.75rem;
-		font-size: 0.7rem;
-		color: #475569;
+		border-color: #101820;
+		background: #101820;
+		color: white;
 	}
 
 	.action-button {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
 		border-radius: 999px;
-		padding: 0.6rem 1.2rem;
+		padding: 0.72rem 1.15rem;
 		font-size: 0.75rem;
-		font-weight: 600;
+		font-weight: 950;
 		transition:
-			transform 0.2s ease,
-			box-shadow 0.2s ease;
+			transform 0.18s ease,
+			box-shadow 0.18s ease,
+			background-color 0.18s ease;
+	}
+
+	.action-button:hover {
+		transform: translateY(-2px);
 	}
 
 	.action-button:disabled {
@@ -2158,104 +2362,142 @@ const formatNumber = (value: number) => Math.round(value).toString();
 	}
 
 	.action-primary {
-		background: linear-gradient(120deg, #4f6fff, #b94bff);
+		background: #101820;
 		color: white;
-		box-shadow: 0 12px 20px rgba(99, 102, 241, 0.25);
+		box-shadow: 0 14px 28px rgba(16, 24, 32, 0.2);
 	}
 
 	.action-success {
-		background: linear-gradient(120deg, #22c55e, #4ade80);
-		color: white;
-		box-shadow: 0 12px 20px rgba(34, 197, 94, 0.2);
+		background: #28e08f;
+		color: #101820;
+		box-shadow: 0 14px 28px rgba(40, 224, 143, 0.2);
 	}
 
 	.action-danger {
-		background: linear-gradient(120deg, #f97316, #ef4444);
+		background: #e5484d;
 		color: white;
-		box-shadow: 0 12px 20px rgba(248, 113, 113, 0.2);
+		box-shadow: 0 14px 28px rgba(229, 72, 77, 0.2);
+	}
+
+	.badge,
+	.trend-badge,
+	.flavor-pill {
+		border-radius: 999px;
+		padding: 0.38rem 0.78rem;
+		font-size: 0.68rem;
+		font-weight: 950;
+		letter-spacing: 0.02em;
+	}
+
+	.badge-warning {
+		background: rgba(245, 158, 11, 0.14);
+		color: #9a5b00;
+	}
+
+	.badge-info {
+		background: rgba(36, 87, 255, 0.12);
+		color: #1741b9;
+	}
+
+	.badge-success,
+	.trend-up {
+		background: rgba(40, 224, 143, 0.18);
+		color: #116b4c;
+	}
+
+	.badge-error,
+	.trend-down {
+		background: rgba(229, 72, 77, 0.12);
+		color: #b4232a;
+	}
+
+	.flavor-pill {
+		background: rgba(16, 24, 32, 0.06);
+		color: #475569;
 	}
 
 	.toggle-button {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		height: 2.25rem;
-		width: 2.25rem;
+		height: 2.35rem;
+		width: 2.35rem;
 		border-radius: 999px;
-		background: #f1f5f9;
-		color: #64748b;
-		transition: transform 0.2s ease;
+		background: #101820;
+		color: white;
+		transition:
+			transform 0.2s ease,
+			background-color 0.2s ease;
 	}
 
-	.metric-card {
-		border-radius: 1.5rem;
-		background: rgba(255, 255, 255, 0.85);
-		padding: 1.25rem;
-		box-shadow: 0 16px 30px rgba(148, 163, 184, 0.15);
+	.toggle-button:hover {
+		transform: translateY(-2px);
+		background: #000;
 	}
 
-	.metric-label {
-		font-size: 0.7rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.2em;
-		color: #64748b;
+	input,
+	select {
+		accent-color: #28e08f;
 	}
 
-	.metric-value {
-		margin-top: 0.4rem;
-		font-size: 1.6rem;
-		font-weight: 600;
-		color: #0f172a;
+	input[class*="rounded-2xl"],
+	select[class*="rounded-2xl"],
+	textarea[class*="rounded-2xl"] {
+		border-color: rgba(16, 24, 32, 0.12) !important;
+		background: rgba(255, 255, 255, 0.72) !important;
+		color: #101820;
+		transition:
+			border-color 0.18s ease,
+			box-shadow 0.18s ease,
+			background-color 0.18s ease;
 	}
 
-	.metric-sub {
-		margin-top: 0.2rem;
-		font-size: 0.75rem;
-		color: #64748b;
+	input[class*="rounded-2xl"]:focus,
+	select[class*="rounded-2xl"]:focus,
+	textarea[class*="rounded-2xl"]:focus {
+		border-color: rgba(40, 224, 143, 0.9) !important;
+		background: white !important;
+		box-shadow: 0 0 0 4px rgba(40, 224, 143, 0.14);
 	}
 
-	.stat-card svg,
-	.metric-card svg,
-	.order-card svg {
-		transition: transform 0.6s ease;
+	[data-order-list] {
+		display: grid;
+		gap: 1rem;
+	}
+
+	.order-card {
+		border-radius: 1.6rem !important;
+		transition:
+			transform 0.2s ease,
+			box-shadow 0.2s ease,
+			border-color 0.2s ease;
+	}
+
+	[data-tab-panel] h2,
+	[data-tab-panel] h3,
+	[data-tab-panel] p[class*="font-semibold"],
+	[data-tab-panel] p[class*="font-medium"] {
+		letter-spacing: -0.01em;
+	}
+
+	[data-tab-panel] svg {
+		transition: transform 0.24s ease;
 	}
 
 	.stat-card:hover svg,
 	.metric-card:hover svg,
 	.order-card:hover svg {
-		transform: rotate(360deg);
+		transform: scale(1.08);
 	}
 
-	@keyframes tabShimmer {
-		0% {
-			background-position: 0% 50%;
+	@media (max-width: 760px) {
+		.admin-tabs {
+			top: 3.8rem;
+			border-radius: 1.4rem;
 		}
-		100% {
-			background-position: 100% 50%;
-		}
-	}
 
-	@keyframes titleShift {
-		0% {
-			background-position: 0% 50%;
-		}
-		50% {
-			background-position: 100% 50%;
-		}
-		100% {
-			background-position: 0% 50%;
-		}
-	}
-
-	@keyframes fadeUp {
-		from {
-			opacity: 0;
-			transform: translateY(12px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
+		.admin-tabs-link {
+			margin-left: 0;
 		}
 	}
 </style>

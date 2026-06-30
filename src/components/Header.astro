@@ -6,37 +6,20 @@ const user = await getUserFromCookies(Astro.cookies);
 const isAuthenticated = Boolean(user);
 ---
 
-<header class="w-full bg-white">
-	<div class="mx-auto flex items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
-		<a
-			href="/"
-			class="bg-gradient-to-r from-[#3d7fff] via-[#9d55ff] to-[#d94bff] bg-clip-text text-base font-semibold text-transparent sm:text-lg"
-		>
-			{brandLine}
+<header class="sticky top-0 z-50 border-b border-black/10 bg-[#fffdf7]/88 backdrop-blur-xl">
+	<div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
+		<a href="/" class="group inline-flex items-center gap-3 text-sm font-black tracking-tight text-[#101820] sm:text-base">
+			<span class="flex h-9 w-9 items-center justify-center rounded-full bg-[#101820] text-xs font-black text-[#28e08f] transition group-hover:rotate-6">LGA</span>
+			<span>{brandLine}</span>
 		</a>
 		<div class="flex items-center gap-3">
 			{isAuthenticated ? (
 				<>
-					<a
-						href="/dashboard"
-						class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
-					>
-						Profil
-					</a>
-					<a
-						href="/logout"
-						class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
-					>
-						Sortie
-					</a>
+					<a href="/dashboard" class="btn-secondary px-4 py-2 text-sm">Espace</a>
+					<a href="/logout" class="hidden rounded-full px-3 py-2 text-sm font-bold text-slate-500 transition hover:text-[#101820] sm:inline-flex">Sortir</a>
 				</>
 			) : (
-				<a
-					href="/login"
-					class="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-400"
-				>
-					Se connecter
-				</a>
+				<a href="/login" class="btn-primary px-4 py-2 text-sm">Se connecter</a>
 			)}
 		</div>
 	</div>
