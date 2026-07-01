@@ -271,9 +271,12 @@ const features = [
 
 			const clamp = (value, min = 0, max = 1) => Math.min(max, Math.max(min, value));
 			const lerp = (from, to, amount) => from + (to - from) * amount;
-			const smoother = (value) => value * value * (3 - 2 * value);
+			const cinematic = (value) => {
+				const t = clamp(value);
+				return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+			};
 			const mixFrame = (a, b, localProgress) => {
-				const t = smoother(clamp(localProgress));
+				const t = cinematic(localProgress);
 				return {
 					x: lerp(a.x, b.x, t),
 					y: lerp(a.y, b.y, t),
@@ -289,28 +292,30 @@ const features = [
 			const getFrames = () => {
 				if (isMobile) {
 					return [
-						{ p: 0, x: 0.78, y: 0.82, z: 0, rx: 0.1, ry: -0.65, rz: -0.12, scale: 0.68, opacity: 0.98 },
-						{ p: 0.1, x: 0.24, y: 0.48, z: 0.06, rx: -0.03, ry: 0.25, rz: 0.08, scale: 0.86, opacity: 1 },
-						{ p: 0.22, x: -0.24, y: 0.12, z: 0.14, rx: 0.08, ry: 1.18, rz: 0.17, scale: 0.98, opacity: 1 },
-						{ p: 0.34, x: 0.22, y: -0.24, z: -0.02, rx: -0.1, ry: 2.05, rz: -0.1, scale: 0.93, opacity: 1 },
-						{ p: 0.47, x: -0.2, y: -0.56, z: 0.1, rx: 0.08, ry: 3.18, rz: 0.16, scale: 1.03, opacity: 1 },
-						{ p: 0.6, x: 0.24, y: -0.82, z: -0.04, rx: -0.06, ry: 4.18, rz: -0.13, scale: 0.9, opacity: 0.98 },
-						{ p: 0.74, x: -0.16, y: -1.03, z: 0.08, rx: 0.04, ry: 5.1, rz: 0.1, scale: 0.82, opacity: 0.94 },
-						{ p: 0.88, x: 0.2, y: -1.16, z: -0.1, rx: 0.1, ry: 5.92, rz: -0.16, scale: 0.74, opacity: 0.88 },
-						{ p: 1, x: 0.55, y: -1.28, z: -0.18, rx: 0.14, ry: 6.55, rz: -0.24, scale: 0.62, opacity: 0.72 }
+						{ p: 0, x: 0.76, y: 0.86, z: 0.02, rx: 0.08, ry: -0.62, rz: -0.1, scale: 0.34, opacity: 0.74 },
+						{ p: 0.1, x: 0.48, y: 0.76, z: 0.08, rx: 0.01, ry: 0.08, rz: 0.04, scale: 0.5, opacity: 0.9 },
+						{ p: 0.21, x: -0.4, y: 0.76, z: 0.16, rx: 0.08, ry: 1.34, rz: 0.15, scale: 0.68, opacity: 1 },
+						{ p: 0.32, x: 0.42, y: 0.66, z: -0.03, rx: -0.08, ry: 2.34, rz: -0.1, scale: 0.72, opacity: 1 },
+						{ p: 0.44, x: -0.34, y: 0.56, z: 0.14, rx: 0.07, ry: 3.24, rz: 0.16, scale: 0.68, opacity: 0.94 },
+						{ p: 0.56, x: 0.42, y: 0.46, z: -0.06, rx: -0.04, ry: 4.1, rz: -0.12, scale: 0.62, opacity: 0.84 },
+						{ p: 0.68, x: -0.18, y: 0.38, z: 0.06, rx: 0.04, ry: 4.92, rz: 0.08, scale: 0.56, opacity: 0.68 },
+						{ p: 0.8, x: 0.34, y: 0.3, z: -0.08, rx: -0.02, ry: 5.62, rz: -0.16, scale: 0.52, opacity: 0.62 },
+						{ p: 0.92, x: 0.54, y: 0.22, z: -0.16, rx: 0.1, ry: 6.16, rz: -0.2, scale: 0.46, opacity: 0.48 },
+						{ p: 1, x: 0.78, y: 0.08, z: -0.22, rx: 0.12, ry: 6.54, rz: -0.22, scale: 0.36, opacity: 0.02 }
 					];
 				}
 
 				return [
-					{ p: 0, x: 2.05, y: 0.78, z: 0, rx: 0.08, ry: -0.72, rz: -0.12, scale: 0.82, opacity: 0.98 },
-					{ p: 0.1, x: 0.94, y: 0.36, z: 0.08, rx: -0.02, ry: 0.22, rz: 0.05, scale: 1.02, opacity: 1 },
-					{ p: 0.22, x: -0.78, y: 0.04, z: 0.2, rx: 0.06, ry: 1.22, rz: 0.14, scale: 1.18, opacity: 1 },
-					{ p: 0.34, x: 0.68, y: -0.32, z: -0.08, rx: -0.08, ry: 2.12, rz: -0.1, scale: 1.03, opacity: 1 },
-					{ p: 0.47, x: -0.56, y: -0.68, z: 0.18, rx: 0.07, ry: 3.22, rz: 0.16, scale: 1.14, opacity: 1 },
-					{ p: 0.6, x: 0.55, y: -0.98, z: -0.08, rx: -0.04, ry: 4.1, rz: -0.12, scale: 0.98, opacity: 0.98 },
-					{ p: 0.74, x: -0.3, y: -1.18, z: 0.14, rx: 0.04, ry: 5.05, rz: 0.08, scale: 0.88, opacity: 0.94 },
-					{ p: 0.88, x: 0.44, y: -1.32, z: -0.12, rx: 0.1, ry: 5.86, rz: -0.16, scale: 0.8, opacity: 0.88 },
-					{ p: 1, x: 1.08, y: -1.48, z: -0.24, rx: 0.14, ry: 6.55, rz: -0.24, scale: 0.66, opacity: 0.74 }
+					{ p: 0, x: 1.32, y: 0.34, z: 0, rx: 0.08, ry: -0.68, rz: -0.12, scale: 0.66, opacity: 0.9 },
+					{ p: 0.1, x: 0.96, y: 0.28, z: 0.08, rx: -0.01, ry: 0.12, rz: 0.03, scale: 0.9, opacity: 1 },
+					{ p: 0.21, x: -0.86, y: 0.2, z: 0.22, rx: 0.06, ry: 1.42, rz: 0.14, scale: 1.08, opacity: 1 },
+					{ p: 0.32, x: 0.92, y: 0.02, z: -0.08, rx: -0.08, ry: 2.46, rz: -0.12, scale: 1.14, opacity: 1 },
+					{ p: 0.44, x: -0.72, y: -0.14, z: 0.18, rx: 0.07, ry: 3.36, rz: 0.16, scale: 1.02, opacity: 0.98 },
+					{ p: 0.56, x: 0.82, y: -0.32, z: -0.08, rx: -0.04, ry: 4.18, rz: -0.12, scale: 0.94, opacity: 0.92 },
+					{ p: 0.68, x: -0.14, y: -0.44, z: 0.1, rx: 0.03, ry: 4.96, rz: 0.08, scale: 0.82, opacity: 0.72 },
+					{ p: 0.8, x: 0.72, y: -0.58, z: -0.12, rx: -0.02, ry: 5.62, rz: -0.15, scale: 0.78, opacity: 0.7 },
+					{ p: 0.92, x: 0.98, y: -0.76, z: -0.2, rx: 0.1, ry: 6.12, rz: -0.22, scale: 0.66, opacity: 0.56 },
+					{ p: 1, x: 1.3, y: -1.02, z: -0.28, rx: 0.14, ry: 6.52, rz: -0.24, scale: 0.52, opacity: 0.02 }
 				];
 			};
 
@@ -343,7 +348,7 @@ const features = [
 				const rect = root.getBoundingClientRect();
 				const scrollRange = Math.max(1, root.offsetHeight - window.innerHeight);
 				progress = clamp(-rect.top / scrollRange);
-				const storyActive = rect.bottom > 0 && rect.top < window.innerHeight;
+				const storyActive = rect.bottom > window.innerHeight * 0.18 && rect.top < window.innerHeight && progress < 0.975;
 				root.classList.toggle("is-story-active", storyActive);
 				if (stage instanceof HTMLElement) {
 					stage.style.opacity = storyActive ? "1" : "0";
@@ -352,16 +357,19 @@ const features = [
 
 				const next = frameForProgress(progress);
 				Object.assign(target, next);
+				const sceneIndex = Math.min(8, Math.floor(clamp(progress, 0, 0.999) * 9));
+				const sceneNames = ["hero", "arrival", "process", "payment", "control", "timeline", "advantages", "features", "cta"];
+				root.dataset.scene = sceneNames[sceneIndex];
 
 				if (meter instanceof HTMLElement) {
 					meter.style.transform = `scaleY(${progress.toFixed(4)})`;
 				}
 
 				if (shadow instanceof HTMLElement) {
-					const shadowX = isMobile ? lerp(76, 72, progress) : lerp(82, 76, progress);
-					const shadowY = isMobile ? lerp(34, 88, progress) : lerp(38, 86, progress);
-					const shadowScale = lerp(isMobile ? 0.58 : 0.78, 0.42, progress);
-					const shadowOpacity = lerp(0.2, 0.08, progress);
+					const shadowX = clamp(50 + next.x * (isMobile ? 30 : 18), 12, 88);
+					const shadowY = clamp((isMobile ? 48 : 65) - next.y * (isMobile ? 10 : 12), 22, 88);
+					const shadowScale = clamp(next.scale * (isMobile ? 0.7 : 0.84), 0.26, 1.04);
+					const shadowOpacity = clamp(next.opacity * 0.18, 0.02, 0.2);
 					shadow.style.setProperty("--shadow-x", `${shadowX.toFixed(2)}%`);
 					shadow.style.setProperty("--shadow-y", `${shadowY.toFixed(2)}%`);
 					shadow.style.setProperty("--shadow-scale", shadowScale.toFixed(3));
@@ -464,13 +472,16 @@ const features = [
 				modelGroup.position.set(state.x, state.y + idleY, state.z);
 				modelGroup.rotation.set(state.rx + idleRot * 0.35, state.ry + idleRot, state.rz + idleRot * 0.65);
 				modelGroup.scale.setScalar(state.scale);
+				key.position.set(2.8 + state.x * 0.55, 4.2 + state.y * 0.35, 5.2);
+				rim.position.set(-4.2 - state.x * 0.35, 2.2, -3.2);
+				fill.intensity = 1.45 + Math.sin(state.ry) * 0.22;
 
 				for (const material of materials) {
-					material.opacity = state.opacity;
+					material.opacity = state.opacity < 0.24 ? state.opacity : 1;
 				}
 
 				if (modelLoaded) {
-					canvas.style.opacity = String(clamp(state.opacity, 0.32, 1));
+					canvas.style.opacity = String(clamp(state.opacity, 0, 1));
 				}
 
 				renderer.render(scene, camera);
@@ -504,19 +515,19 @@ const features = [
 	.puff-scroll-story {
 		position: relative;
 		isolation: isolate;
-		min-height: 990svh;
+		min-height: 980svh;
 		overflow: visible;
 		background:
-			linear-gradient(180deg, rgba(255, 253, 247, 0.98) 0%, rgba(246, 244, 238, 1) 52%, rgba(255, 253, 247, 1) 100%),
-			linear-gradient(135deg, rgba(40, 224, 143, 0.12), transparent 34%),
-			linear-gradient(315deg, rgba(36, 87, 255, 0.1), transparent 38%);
+			linear-gradient(180deg, rgba(255, 253, 247, 0.98) 0%, rgba(248, 247, 241, 1) 44%, rgba(242, 246, 242, 1) 70%, rgba(255, 253, 247, 1) 100%),
+			linear-gradient(135deg, rgba(40, 224, 143, 0.1), transparent 36%),
+			linear-gradient(315deg, rgba(36, 87, 255, 0.08), transparent 42%);
 		color: #101820;
 	}
 
 	.puff-stage {
 		position: fixed;
 		inset: 0;
-		z-index: 0;
+		z-index: 1;
 		height: 100svh;
 		overflow: hidden;
 		opacity: 0;
@@ -544,7 +555,9 @@ const features = [
 	.story-surface {
 		inset: 0;
 		background:
-			linear-gradient(90deg, rgba(255, 253, 247, 0.94) 0%, rgba(255, 253, 247, 0.54) 42%, rgba(255, 253, 247, 0.9) 100%),
+			linear-gradient(90deg, rgba(255, 253, 247, 0.98) 0%, rgba(255, 253, 247, 0.62) 45%, rgba(255, 253, 247, 0.94) 100%),
+			linear-gradient(140deg, rgba(40, 224, 143, 0.1), transparent 34%),
+			linear-gradient(310deg, rgba(36, 87, 255, 0.08), transparent 40%),
 			linear-gradient(180deg, rgba(16, 24, 32, 0.04), transparent 18%, rgba(16, 24, 32, 0.05) 100%);
 	}
 
@@ -556,13 +569,24 @@ const features = [
 			linear-gradient(90deg, rgba(16, 24, 32, 0.055) 1px, transparent 1px);
 		background-size: 42px 42px;
 		mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.18));
+		transition:
+			opacity 0.35s ease,
+			background-size 0.35s ease;
+	}
+
+	.puff-scroll-story[data-scene="payment"] .story-grid,
+	.puff-scroll-story[data-scene="features"] .story-grid,
+	.puff-scroll-story[data-scene="cta"] .story-grid {
+		opacity: 0.56;
+		background-size: 34px 34px;
 	}
 
 	.story-depth {
 		z-index: 1;
 		border: 1px solid rgba(16, 24, 32, 0.08);
-		background: rgba(255, 255, 255, 0.28);
-		box-shadow: 0 24px 70px rgba(16, 24, 32, 0.08);
+		background: rgba(255, 255, 255, 0.2);
+		box-shadow: 0 24px 70px rgba(16, 24, 32, 0.06);
+		opacity: 0.62;
 		transform: rotate(-7deg);
 	}
 
@@ -626,7 +650,7 @@ const features = [
 		position: absolute;
 		right: clamp(1rem, 3vw, 2rem);
 		top: 50%;
-		z-index: 8;
+		z-index: 4;
 		width: 3px;
 		height: 32vh;
 		overflow: hidden;
@@ -648,27 +672,68 @@ const features = [
 
 	.story-steps {
 		position: relative;
-		z-index: 4;
+		z-index: 2;
 	}
 
 	.story-step {
 		position: relative;
 		display: grid;
+		width: min(1180px, 100%);
 		min-height: 112svh;
 		align-items: center;
-		padding: 7rem max(1rem, calc((100vw - 1120px) / 2)) 6rem;
+		grid-template-columns: minmax(22rem, 0.9fr) minmax(22rem, 1fr);
+		gap: clamp(1.5rem, 6vw, 5.5rem);
+		margin-inline: auto;
+		padding: 8rem 1.25rem 7rem;
+	}
+
+	.story-step::before {
+		content: "";
+		position: absolute;
+		inset: 5rem auto 5rem 0;
+		z-index: 1;
+		width: min(44rem, 54vw);
+		border-radius: 8px;
+		background: linear-gradient(90deg, rgba(255, 253, 247, 0.92), rgba(255, 253, 247, 0.08));
+		opacity: 0.86;
+		pointer-events: none;
+	}
+
+	.story-step-right::before,
+	.story-step-cta::before {
+		inset: 5rem 0 5rem auto;
+		background: linear-gradient(270deg, rgba(255, 253, 247, 0.92), rgba(255, 253, 247, 0.08));
+	}
+
+	.story-step-hero::before,
+	.story-step-advantages::before,
+	.story-step-features::before {
+		display: none;
 	}
 
 	.story-step-hero {
 		align-items: center;
-		min-height: 104svh;
+		min-height: 106svh;
 		padding-top: 5.4rem;
 	}
 
-	.story-hero-copy,
+	.story-step-hero .story-hero-copy {
+		grid-column: 1;
+		margin-inline: 0;
+		text-align: left;
+	}
+
+	.story-hero-copy {
+		position: relative;
+		z-index: 7;
+		width: min(44rem, calc(100vw - 2rem));
+		margin-inline: 0 auto;
+		text-align: left;
+	}
+
 	.wide-copy {
 		position: relative;
-		z-index: 6;
+		z-index: 7;
 		width: min(44rem, calc(100vw - 2rem));
 		margin-inline: auto;
 		text-align: center;
@@ -711,6 +776,7 @@ const features = [
 		font-weight: 950;
 		line-height: 0.92;
 		letter-spacing: 0;
+		text-shadow: 0 1px 0 rgba(255, 253, 247, 0.7);
 		text-wrap: balance;
 	}
 
@@ -730,13 +796,13 @@ const features = [
 
 	.story-lead {
 		width: min(40rem, 100%);
-		margin: 1.25rem auto 0;
+		margin: 1.25rem 0 0;
 	}
 
 	.story-actions {
 		display: flex;
 		flex-wrap: wrap;
-		justify-content: center;
+		justify-content: flex-start;
 		gap: 0.8rem;
 		margin-top: 1.5rem;
 	}
@@ -751,7 +817,7 @@ const features = [
 		display: grid;
 		grid-template-columns: repeat(3, minmax(0, 1fr));
 		width: min(36rem, 100%);
-		margin: 2rem auto 0;
+		margin: 2rem 0 0;
 		border-top: 1px solid rgba(16, 24, 32, 0.1);
 		border-bottom: 1px solid rgba(16, 24, 32, 0.1);
 		background: rgba(255, 253, 247, 0.92);
@@ -811,25 +877,47 @@ const features = [
 	.story-card-stack article,
 	.advantage-grid article,
 	.feature-panel {
-		border: 1px solid rgba(16, 24, 32, 0.12);
+		border: 1px solid rgba(16, 24, 32, 0.13);
 		border-radius: 8px;
-		background: rgba(255, 253, 247, 0.78);
-		box-shadow: 0 24px 70px rgba(16, 24, 32, 0.1);
-		backdrop-filter: blur(18px);
+		background: rgba(255, 253, 247, 0.92);
+		box-shadow: 0 24px 70px rgba(16, 24, 32, 0.12);
+		backdrop-filter: blur(22px);
 	}
 
 	.story-panel,
 	.depth-copy,
 	.story-final {
 		width: min(31.5rem, calc(100vw - 2rem));
-		padding: 1.4rem;
-		opacity: 0.72;
+		padding: 1.45rem;
+		opacity: 0.88;
 		transform: translateY(1.2rem);
 		transition:
 			opacity 0.45s ease,
 			transform 0.45s ease,
 			border-color 0.3s ease,
 			box-shadow 0.3s ease;
+	}
+
+	.story-panel::after,
+	.depth-copy::after,
+	.story-final::after,
+	.feature-panel::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+		border-radius: inherit;
+		background: linear-gradient(135deg, rgba(255, 255, 255, 0.38), transparent 38%);
+		opacity: 0.52;
+		pointer-events: none;
+	}
+
+	.story-panel,
+	.depth-copy,
+	.story-final,
+	.feature-panel {
+		position: relative;
+		z-index: 7;
+		overflow: hidden;
 	}
 
 	.story-step.is-active .story-panel,
@@ -863,35 +951,36 @@ const features = [
 
 	.story-step-left .story-panel,
 	.story-step-depth .depth-copy {
+		grid-column: 1;
 		margin-right: auto;
 	}
 
 	.story-step-right .story-panel,
 	.story-step-cta .story-final {
+		grid-column: 2;
 		margin-left: auto;
 	}
 
 	.story-panel-soft {
 		background:
-			linear-gradient(135deg, rgba(36, 87, 255, 0.12), rgba(255, 253, 247, 0.84) 48%),
-			rgba(255, 253, 247, 0.78);
+			linear-gradient(135deg, rgba(36, 87, 255, 0.12), rgba(255, 253, 247, 0.94) 48%),
+			rgba(255, 253, 247, 0.92);
 	}
 
 	.story-panel-accent {
 		background:
-			linear-gradient(135deg, rgba(40, 224, 143, 0.16), rgba(255, 253, 247, 0.82) 45%),
-			rgba(255, 253, 247, 0.78);
+			linear-gradient(135deg, rgba(40, 224, 143, 0.16), rgba(255, 253, 247, 0.94) 45%),
+			rgba(255, 253, 247, 0.92);
 	}
 
 	.story-step-process {
 		grid-template-columns: minmax(0, 1fr) minmax(18rem, 25rem);
-		gap: clamp(2rem, 6vw, 5rem);
 	}
 
 	.story-card-stack,
 	.depth-cards {
 		position: relative;
-		z-index: 5;
+		z-index: 2;
 		display: grid;
 		gap: 0.8rem;
 		width: min(25rem, calc(100vw - 2rem));
@@ -900,6 +989,7 @@ const features = [
 
 	.story-card-stack article,
 	.depth-cards article {
+		position: relative;
 		padding: 1rem;
 		transition:
 			transform 0.24s ease,
@@ -940,7 +1030,18 @@ const features = [
 
 	.story-step-depth {
 		grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
-		gap: clamp(2rem, 6vw, 5rem);
+	}
+
+	.story-step-depth .depth-copy {
+		z-index: 5;
+	}
+
+	.story-step-depth .depth-cards article:nth-child(2) {
+		transform: translateX(-1.6rem);
+	}
+
+	.story-step-depth.is-active .depth-cards article:nth-child(2) {
+		transform: translateX(-2.3rem) translateY(-2px);
 	}
 
 	.mini-timeline {
@@ -962,10 +1063,13 @@ const features = [
 
 	.story-step-advantages {
 		align-content: center;
+		grid-template-columns: 1fr;
 		gap: 1.25rem;
 	}
 
 	.advantage-grid {
+		position: relative;
+		z-index: 7;
 		display: grid;
 		grid-template-columns: repeat(4, minmax(0, 1fr));
 		gap: 0.8rem;
@@ -988,6 +1092,7 @@ const features = [
 	}
 
 	.story-step-features {
+		grid-template-columns: 1fr;
 		justify-items: center;
 	}
 
@@ -1014,6 +1119,8 @@ const features = [
 	}
 
 	.feature-grid {
+		position: relative;
+		z-index: 2;
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 0.7rem;
@@ -1070,7 +1177,7 @@ const features = [
 
 	@media (max-width: 767px) {
 		.puff-scroll-story {
-			min-height: 1040svh;
+			min-height: 990svh;
 		}
 
 		.story-depth-a {
@@ -1100,8 +1207,26 @@ const features = [
 		}
 
 		.story-step {
-			min-height: 116svh;
-			padding: 5.2rem 1rem 4.2rem;
+			width: 100%;
+			min-height: 112svh;
+			grid-template-columns: 1fr;
+			align-items: end;
+			gap: 0.95rem;
+			padding: 5.2rem 1rem 5.8rem;
+		}
+
+		.story-step::before {
+			inset: auto 0 3.5rem 0;
+			width: 100%;
+			height: 48%;
+			background: linear-gradient(180deg, rgba(255, 253, 247, 0), rgba(255, 253, 247, 0.9) 42%, rgba(255, 253, 247, 0.96));
+			opacity: 1;
+		}
+
+		.story-step-hero::before,
+		.story-step-advantages::before,
+		.story-step-features::before {
+			display: block;
 		}
 
 		.story-step-hero {
@@ -1111,6 +1236,7 @@ const features = [
 		}
 
 		.story-hero-copy {
+			margin-inline: auto;
 			text-align: center;
 		}
 
@@ -1128,6 +1254,10 @@ const features = [
 		.feature-panel p {
 			font-size: 0.94rem;
 			line-height: 1.68;
+		}
+
+		.story-lead {
+			margin-inline: auto;
 		}
 
 		.story-actions {
@@ -1165,7 +1295,8 @@ const features = [
 		.depth-copy,
 		.story-final {
 			width: min(100%, calc(100vw - 2rem));
-			padding: 1.05rem;
+			padding: 1.08rem;
+			background: rgba(255, 253, 247, 0.95);
 		}
 
 		.story-panel h2,
@@ -1180,6 +1311,14 @@ const features = [
 		.story-step-left,
 		.story-step-right {
 			align-items: end;
+		}
+
+		.story-step-left .story-panel,
+		.story-step-right .story-panel,
+		.story-step-depth .depth-copy,
+		.story-step-cta .story-final {
+			grid-column: 1;
+			margin-inline: 0;
 		}
 
 		.story-step-process,
@@ -1203,11 +1342,16 @@ const features = [
 		.story-card-stack article:nth-child(2),
 		.depth-cards article:nth-child(2) {
 			margin-left: 1.2rem;
+			transform: none;
 		}
 
 		.story-card-stack article:nth-child(3),
 		.depth-cards article:nth-child(3) {
 			margin-right: 1.2rem;
+		}
+
+		.story-step-depth.is-active .depth-cards article:nth-child(2) {
+			transform: none;
 		}
 
 		.mini-timeline {
@@ -1238,9 +1382,21 @@ const features = [
 			font-size: 4rem;
 		}
 
+		.story-step {
+			grid-template-columns: minmax(0, 1fr);
+			width: min(760px, 100%);
+		}
+
 		.story-step-process,
 		.story-step-depth {
 			grid-template-columns: 1fr;
+		}
+
+		.story-step-left .story-panel,
+		.story-step-right .story-panel,
+		.story-step-depth .depth-copy,
+		.story-step-cta .story-final {
+			grid-column: 1;
 		}
 
 		.story-card-stack,
