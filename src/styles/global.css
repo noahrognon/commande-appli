@@ -19,11 +19,13 @@
 html {
 	scroll-behavior: smooth;
 	background: var(--paper);
+	overflow-x: hidden;
 }
 
 body {
 	margin: 0;
 	min-width: 320px;
+	overflow-x: hidden;
 	background:
 		linear-gradient(180deg, rgba(255, 253, 247, 0.95), rgba(246, 244, 238, 0.98)),
 		radial-gradient(circle at 20% 0%, rgba(40, 224, 143, 0.12), transparent 30%),
