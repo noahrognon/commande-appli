@@ -1,340 +1,1268 @@
 ---
-const puffLeft = "/images/puff1.webp";
-const puffRight = "/images/puff2.webp";
+const metrics = [
+	{ value: "85 EUR", label: "par carton" },
+	{ value: "10", label: "gouts max" },
+	{ value: "24/7", label: "suivi client" }
+];
+
+const processSteps = [
+	{ id: "01", title: "Tu reserves", text: "Choisis tes gouts, tes quantites et ton paiement." },
+	{ id: "02", title: "On centralise", text: "Les commandes sont regroupees proprement cote admin." },
+	{ id: "03", title: "Tu suis", text: "Le statut avance dans ton espace sans avoir a demander." }
+];
+
+const proofCards = [
+	{ title: "Preuve virement", text: "Visible pour le client et pour l'admin." },
+	{ title: "Validation admin", text: "Paiement valide ou preuve refusee avec raison." },
+	{ title: "Emails automatiques", text: "Commande, paiement, rappel et suivi restent propres." }
+];
+
+const advantages = [
+	{ title: "Prix lisible", text: "Le total reste clair avant la validation." },
+	{ title: "Commande rapide", text: "Le parcours garde le client dans le flow." },
+	{ title: "Suivi clair", text: "Chaque statut est visible dans le dashboard." },
+	{ title: "Admin mobile", text: "Les actions importantes restent accessibles sur telephone." }
+];
+
+const features = [
+	"Timer de precommande en temps reel",
+	"Catalogue complet des saveurs",
+	"Codes promo et recap automatique",
+	"Preuve bancaire visible",
+	"Notifications de suivi",
+	"Dashboard personnalise"
+];
 ---
 
-<section class="hero-puff-scene relative isolate overflow-hidden bg-[#fffdf7] text-[#101820]" data-puff-hero>
-	<div class="absolute inset-0 soft-grid opacity-60"></div>
-	<div class="hero-glow hero-glow-left"></div>
-	<div class="hero-glow hero-glow-right"></div>
-
-	<div class="hero-puff-stage hero-puff-stage-left" aria-hidden="true">
-		<span class="hero-puff-shadow"></span>
-		<img
-			src={puffLeft}
-			alt=""
-			class="hero-puff hero-puff-left"
-			loading="eager"
-			decoding="async"
-		/>
-	</div>
-	<div class="hero-puff-stage hero-puff-stage-right" aria-hidden="true">
-		<span class="hero-puff-shadow"></span>
-		<img
-			src={puffRight}
-			alt=""
-			class="hero-puff hero-puff-right"
-			loading="eager"
-			decoding="async"
-		/>
+<section class="puff-scroll-story" data-puff-story>
+	<div class="puff-stage" aria-hidden="true">
+		<div class="story-surface"></div>
+		<div class="story-grid"></div>
+		<div class="story-depth story-depth-a"></div>
+		<div class="story-depth story-depth-b"></div>
+		<div class="story-depth story-depth-c"></div>
+		<canvas class="puff-canvas" data-puff-canvas></canvas>
+		<span class="puff-model-shadow" data-puff-shadow></span>
+		<div class="story-progress">
+			<span data-story-meter></span>
+		</div>
 	</div>
 
-	<div class="relative z-10 mx-auto flex min-h-[calc(100svh-4.4rem)] w-full max-w-6xl flex-col justify-center px-4 pb-12 pt-10 sm:px-6 lg:px-8">
-		<div class="hero-copy mx-auto max-w-4xl text-center">
-			<div class="inline-flex items-center gap-2 rounded-full border border-black/10 bg-white/75 px-3 py-2 text-xs font-black uppercase tracking-[0.18em] text-[#116b4c] shadow-sm backdrop-blur-xl">
-				<span class="h-2 w-2 rounded-full bg-[#28e08f]"></span>
-				<span>Precommande par vagues</span>
+	<div class="story-steps">
+		<section class="story-step story-step-hero" data-story-step>
+			<div class="story-hero-copy">
+				<p class="story-kicker">
+					<span></span>
+					Precommande par vagues
+				</p>
+				<h1>Reserve ton stock avant tout le monde.</h1>
+				<p class="story-lead">
+					Les commandes sont groupees, les gouts sont securises, les prix restent propres. Tu choisis, on centralise, tu recuperes sans courir apres le stock.
+				</p>
+				<div class="story-actions">
+					<a href="/register" class="btn-primary story-action">
+						<span>Creer un compte</span>
+						<span aria-hidden="true">&#8594;</span>
+					</a>
+					<a href="/precommande" class="btn-secondary story-action">Commander maintenant</a>
+				</div>
+				<div class="story-metrics">
+					{metrics.map((metric) => (
+						<div>
+							<strong>{metric.value}</strong>
+							<span>{metric.label}</span>
+						</div>
+					))}
+				</div>
 			</div>
+			<div class="story-next-hint">
+				<span>Le produit accompagne toute la page</span>
+			</div>
+		</section>
 
-			<h1 class="mt-6 text-[clamp(2.35rem,10.8vw,3.35rem)] font-black leading-[0.92] tracking-tight text-[#101820] md:text-[clamp(4.6rem,8.5vw,7rem)]">
-				<span class="block">Reserve ton</span>
-				<span class="block">stock avant</span>
-				<span class="block">tout le</span>
-				<span class="block">monde.</span>
-			</h1>
+		<section class="story-step story-step-left" data-story-step>
+			<div class="story-panel">
+				<p class="story-label">01 / Arrivee</p>
+				<h2>Le produit entre dans la vague.</h2>
+				<p>
+					La page ne commence plus par une simple image. Le GLB arrive, pivote, descend et guide le regard vers la suite du parcours.
+				</p>
+			</div>
+		</section>
 
-			<p class="mx-auto mt-5 max-w-2xl text-base font-semibold leading-7 text-slate-600 sm:text-lg">
-				Les commandes sont groupees, les gouts sont securises, les prix restent propres. Tu choisis, on centralise, tu recuperes sans courir apres le stock.
-			</p>
+		<section class="story-step story-step-process" data-story-step>
+			<div class="story-panel story-panel-soft">
+				<p class="story-label">02 / Process</p>
+				<h2>Trois actions, rien de flou.</h2>
+				<p>
+					Le client comprend rapidement quoi faire, ce que vous gerez, et comment il retrouvera sa commande ensuite.
+				</p>
+			</div>
+			<div class="story-card-stack">
+				{processSteps.map((step) => (
+					<article>
+						<span>{step.id}</span>
+						<h3>{step.title}</h3>
+						<p>{step.text}</p>
+					</article>
+				))}
+			</div>
+		</section>
 
-			<div class="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center sm:gap-4">
-				<a href="/register" class="btn-primary px-5 py-3 text-base">
-					<span>Creer un compte</span>
-					<span aria-hidden="true">→</span>
-				</a>
-				<a href="/precommande" class="btn-secondary px-5 py-3 text-base">Commander maintenant</a>
+		<section class="story-step story-step-right" data-story-step>
+			<div class="story-panel story-panel-accent">
+				<p class="story-label">03 / Paiement</p>
+				<h2>Le paiement reste propre, meme sur mobile.</h2>
+				<p>
+					Virement, liquide, preuve bancaire et validation admin sont presentes dans le parcours sans creer de confusion.
+				</p>
 			</div>
-		</div>
+		</section>
 
-		<div class="hero-metrics mx-auto mt-10 grid w-full max-w-3xl grid-cols-3 gap-2 sm:gap-4">
-			<div>
-				<p class="text-2xl font-black sm:text-3xl">85 EUR</p>
-				<p class="mt-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-500">par carton</p>
+		<section class="story-step story-step-depth" data-story-step>
+			<div class="depth-copy">
+				<p class="story-label">04 / Controle</p>
+				<h2>Tout ce qui rassure est visible.</h2>
+				<p>
+					Le produit traverse la page pendant que les blocs importants apparaissent autour de lui : preuve, validation, emails et suivi.
+				</p>
 			</div>
-			<div>
-				<p class="text-2xl font-black sm:text-3xl">10</p>
-				<p class="mt-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-500">gouts max</p>
+			<div class="depth-cards">
+				{proofCards.map((card) => (
+					<article>
+						<h3>{card.title}</h3>
+						<p>{card.text}</p>
+					</article>
+				))}
 			</div>
-			<div>
-				<p class="text-2xl font-black sm:text-3xl">24/7</p>
-				<p class="mt-1 text-[0.68rem] font-black uppercase tracking-[0.12em] text-slate-500">suivi en ligne</p>
+		</section>
+
+		<section class="story-step story-step-left" data-story-step>
+			<div class="story-panel">
+				<p class="story-label">05 / Timeline</p>
+				<h2>Le client sait ou sa commande en est.</h2>
+				<p>
+					Commande creee, paiement en attente, paiement valide, commande fournisseur, stock recu puis livraison : le statut devient une vraie experience.
+				</p>
+				<div class="mini-timeline">
+					<span>Creee</span>
+					<span>Payee</span>
+					<span>Fournisseur</span>
+					<span>Livree</span>
+				</div>
 			</div>
-		</div>
+		</section>
+
+		<section class="story-step story-step-advantages" data-story-step>
+			<div class="wide-copy">
+				<p class="story-label">06 / Avantages</p>
+				<h2>L'experience doit donner envie de revenir.</h2>
+			</div>
+			<div class="advantage-grid">
+				{advantages.map((item) => (
+					<article>
+						<span></span>
+						<h3>{item.title}</h3>
+						<p>{item.text}</p>
+					</article>
+				))}
+			</div>
+		</section>
+
+		<section class="story-step story-step-features" data-story-step>
+			<div class="feature-panel">
+				<p class="story-label">07 / Fonctionnalites</p>
+				<h2>Tout ce qu'il faut pour commander sans friction.</h2>
+				<p>
+					La home garde un cote spectaculaire, mais chaque bloc sert le parcours reel : commander, payer, suivre, recuperer.
+				</p>
+				<div class="feature-grid">
+					{features.map((feature) => (
+						<div>
+							<span aria-hidden="true">&#10003;</span>
+							<p>{feature}</p>
+						</div>
+					))}
+				</div>
+			</div>
+		</section>
+
+		<section class="story-step story-step-cta" data-story-step>
+			<div class="story-final">
+				<p class="story-label">08 / Action</p>
+				<h2>La vague est prete, il reste juste a commander.</h2>
+				<p>
+					Le GLB termine sa trajectoire proche du CTA pour fermer l'histoire : le produit a accompagne toute la page, pas seulement le premier ecran.
+				</p>
+				<div class="story-actions">
+					<a href="/precommande" class="btn-primary story-action">
+						<span>Lancer ma precommande</span>
+						<span aria-hidden="true">&#8594;</span>
+					</a>
+					<a href="/login" class="btn-secondary story-action">Voir mon espace</a>
+				</div>
+			</div>
+		</section>
 	</div>
 </section>
 
 <script>
-	const hero = document.querySelector("[data-puff-hero]");
+	import * as THREE from "three";
+	import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+	import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 
-	if (hero instanceof HTMLElement) {
-		const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-		let ticking = false;
+	const root = document.querySelector("[data-puff-story]");
 
-		const update = () => {
-			const rect = hero.getBoundingClientRect();
-			const scrollRange = Math.max(1, hero.offsetHeight * 0.72);
-			const progress = Math.min(1, Math.max(0, -rect.top / scrollRange));
+	if (root instanceof HTMLElement) {
+		const canvas = root.querySelector("[data-puff-canvas]");
+		const stage = root.querySelector(".puff-stage");
+		const meter = root.querySelector("[data-story-meter]");
+		const shadow = root.querySelector("[data-puff-shadow]");
+		const steps = [...root.querySelectorAll("[data-story-step]")];
+		const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+		const webglAvailable = (() => {
+			try {
+				const testCanvas = document.createElement("canvas");
+				return Boolean(
+					window.WebGLRenderingContext &&
+						(testCanvas.getContext("webgl") || testCanvas.getContext("experimental-webgl"))
+				);
+			} catch {
+				return false;
+			}
+		})();
+
+		if (!(canvas instanceof HTMLCanvasElement) || reducedMotion || !webglAvailable) {
+			root.classList.add("is-no-3d");
+		} else {
+			const renderer = new THREE.WebGLRenderer({
+				canvas,
+				alpha: true,
+				antialias: !window.matchMedia("(max-width: 767px)").matches,
+				powerPreference: "high-performance"
+			});
+
+			const scene = new THREE.Scene();
+			const camera = new THREE.PerspectiveCamera(32, 1, 0.1, 100);
+			const modelGroup = new THREE.Group();
+			const clock = new THREE.Clock();
+			const pmrem = new THREE.PMREMGenerator(renderer);
+			let rafId = 0;
+			let modelLoaded = false;
+			let destroyed = false;
+			let progress = 0;
+			let isMobile = window.matchMedia("(max-width: 767px)").matches;
+
+			const state = { x: 0, y: 0, z: 0, rx: 0, ry: 0, rz: 0, scale: 1, opacity: 1 };
+			const target = { ...state };
+			const materials = [];
+
+			scene.add(modelGroup);
+			scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+			const ambient = new THREE.HemisphereLight(0xffffff, 0xd7efe5, 2.35);
+			const key = new THREE.DirectionalLight(0xffffff, 4.4);
+			const rim = new THREE.DirectionalLight(0x8fd8ff, 2.3);
+			const fill = new THREE.DirectionalLight(0xfff0be, 1.8);
+			key.position.set(3.2, 4.4, 5.4);
+			rim.position.set(-4.5, 2.2, -3.2);
+			fill.position.set(0.6, -1.2, 3.6);
+			scene.add(ambient, key, rim, fill);
 
 			const clamp = (value, min = 0, max = 1) => Math.min(max, Math.max(min, value));
-			const smooth = (start, end, value) => {
-				const t = clamp((value - start) / (end - start));
-				return t * t * (3 - 2 * t);
+			const lerp = (from, to, amount) => from + (to - from) * amount;
+			const smoother = (value) => value * value * (3 - 2 * value);
+			const mixFrame = (a, b, localProgress) => {
+				const t = smoother(clamp(localProgress));
+				return {
+					x: lerp(a.x, b.x, t),
+					y: lerp(a.y, b.y, t),
+					z: lerp(a.z, b.z, t),
+					rx: lerp(a.rx, b.rx, t),
+					ry: lerp(a.ry, b.ry, t),
+					rz: lerp(a.rz, b.rz, t),
+					scale: lerp(a.scale, b.scale, t),
+					opacity: lerp(a.opacity, b.opacity, t)
+				};
 			};
 
-			const approach = smooth(0.02, 0.34, progress);
-			const turn = smooth(0.12, 0.58, progress);
-			const exit = smooth(0.62, 1, progress);
-			const breathe = Math.sin(progress * Math.PI) * 0.35;
+			const getFrames = () => {
+				if (isMobile) {
+					return [
+						{ p: 0, x: 0.78, y: 0.82, z: 0, rx: 0.1, ry: -0.65, rz: -0.12, scale: 0.68, opacity: 0.98 },
+						{ p: 0.1, x: 0.24, y: 0.48, z: 0.06, rx: -0.03, ry: 0.25, rz: 0.08, scale: 0.86, opacity: 1 },
+						{ p: 0.22, x: -0.24, y: 0.12, z: 0.14, rx: 0.08, ry: 1.18, rz: 0.17, scale: 0.98, opacity: 1 },
+						{ p: 0.34, x: 0.22, y: -0.24, z: -0.02, rx: -0.1, ry: 2.05, rz: -0.1, scale: 0.93, opacity: 1 },
+						{ p: 0.47, x: -0.2, y: -0.56, z: 0.1, rx: 0.08, ry: 3.18, rz: 0.16, scale: 1.03, opacity: 1 },
+						{ p: 0.6, x: 0.24, y: -0.82, z: -0.04, rx: -0.06, ry: 4.18, rz: -0.13, scale: 0.9, opacity: 0.98 },
+						{ p: 0.74, x: -0.16, y: -1.03, z: 0.08, rx: 0.04, ry: 5.1, rz: 0.1, scale: 0.82, opacity: 0.94 },
+						{ p: 0.88, x: 0.2, y: -1.16, z: -0.1, rx: 0.1, ry: 5.92, rz: -0.16, scale: 0.74, opacity: 0.88 },
+						{ p: 1, x: 0.55, y: -1.28, z: -0.18, rx: 0.14, ry: 6.55, rz: -0.24, scale: 0.62, opacity: 0.72 }
+					];
+				}
 
-			const leftX = approach * 4.4 - exit * 12;
-			const rightX = -approach * 4.4 + exit * 12;
-			const leftY = -approach * 0.45 + exit * 2.9 - breathe;
-			const rightY = -approach * 0.2 - exit * 2.4 + breathe;
-			const leftZ = -9 + turn * 15 - exit * 20;
-			const rightZ = 9 - turn * 15 + exit * 20;
-			const leftYRot = -turn * 34 + exit * 18;
-			const rightYRot = turn * 34 - exit * 18;
-			const scale = 1 + approach * 0.08 - exit * 0.12;
-			const opacity = 0.92 - exit * 0.58;
-			const shadowOpacity = 0.18 + approach * 0.17 - exit * 0.24;
-			const shadowScale = 1 + approach * 0.22 - exit * 0.28;
+				return [
+					{ p: 0, x: 2.05, y: 0.78, z: 0, rx: 0.08, ry: -0.72, rz: -0.12, scale: 0.82, opacity: 0.98 },
+					{ p: 0.1, x: 0.94, y: 0.36, z: 0.08, rx: -0.02, ry: 0.22, rz: 0.05, scale: 1.02, opacity: 1 },
+					{ p: 0.22, x: -0.78, y: 0.04, z: 0.2, rx: 0.06, ry: 1.22, rz: 0.14, scale: 1.18, opacity: 1 },
+					{ p: 0.34, x: 0.68, y: -0.32, z: -0.08, rx: -0.08, ry: 2.12, rz: -0.1, scale: 1.03, opacity: 1 },
+					{ p: 0.47, x: -0.56, y: -0.68, z: 0.18, rx: 0.07, ry: 3.22, rz: 0.16, scale: 1.14, opacity: 1 },
+					{ p: 0.6, x: 0.55, y: -0.98, z: -0.08, rx: -0.04, ry: 4.1, rz: -0.12, scale: 0.98, opacity: 0.98 },
+					{ p: 0.74, x: -0.3, y: -1.18, z: 0.14, rx: 0.04, ry: 5.05, rz: 0.08, scale: 0.88, opacity: 0.94 },
+					{ p: 0.88, x: 0.44, y: -1.32, z: -0.12, rx: 0.1, ry: 5.86, rz: -0.16, scale: 0.8, opacity: 0.88 },
+					{ p: 1, x: 1.08, y: -1.48, z: -0.24, rx: 0.14, ry: 6.55, rz: -0.24, scale: 0.66, opacity: 0.74 }
+				];
+			};
 
-			hero.style.setProperty("--left-x", `${leftX.toFixed(2)}vw`);
-			hero.style.setProperty("--left-y", `${leftY.toFixed(2)}rem`);
-			hero.style.setProperty("--left-z", `${leftZ.toFixed(2)}deg`);
-			hero.style.setProperty("--left-yrot", `${leftYRot.toFixed(2)}deg`);
-			hero.style.setProperty("--right-x", `${rightX.toFixed(2)}vw`);
-			hero.style.setProperty("--right-y", `${rightY.toFixed(2)}rem`);
-			hero.style.setProperty("--right-z", `${rightZ.toFixed(2)}deg`);
-			hero.style.setProperty("--right-yrot", `${rightYRot.toFixed(2)}deg`);
-			hero.style.setProperty("--puff-xrot", `${(turn * 8 - exit * 5).toFixed(2)}deg`);
-			hero.style.setProperty("--puff-scale", scale.toFixed(3));
-			hero.style.setProperty("--puff-opacity", opacity.toFixed(3));
-			hero.style.setProperty("--shadow-opacity", shadowOpacity.toFixed(3));
-			hero.style.setProperty("--shadow-scale", shadowScale.toFixed(3));
-			ticking = false;
-		};
+			const frameForProgress = (value) => {
+				const frames = getFrames();
+				for (let index = 0; index < frames.length - 1; index += 1) {
+					const current = frames[index];
+					const next = frames[index + 1];
+					if (value <= next.p) {
+						return mixFrame(current, next, (value - current.p) / (next.p - current.p));
+					}
+				}
+				return frames[frames.length - 1];
+			};
 
-		const requestUpdate = () => {
-			if (reduceMotion || ticking) return;
-			ticking = true;
-			window.requestAnimationFrame(update);
-		};
+			const resize = () => {
+				isMobile = window.matchMedia("(max-width: 767px)").matches;
+				const width = Math.max(1, root.clientWidth);
+				const height = Math.max(1, window.innerHeight);
+				const pixelRatio = Math.min(window.devicePixelRatio || 1, isMobile ? 1.35 : 1.75);
+				renderer.setPixelRatio(pixelRatio);
+				renderer.setSize(width, height, false);
+				camera.aspect = width / height;
+				camera.fov = isMobile ? 35 : 30;
+				camera.position.set(0, 0, isMobile ? 5.9 : 6.2);
+				camera.updateProjectionMatrix();
+			};
 
-		update();
-		window.addEventListener("scroll", requestUpdate, { passive: true });
-		window.addEventListener("resize", requestUpdate);
+			const updateProgress = () => {
+				const rect = root.getBoundingClientRect();
+				const scrollRange = Math.max(1, root.offsetHeight - window.innerHeight);
+				progress = clamp(-rect.top / scrollRange);
+				const storyActive = rect.bottom > 0 && rect.top < window.innerHeight;
+				root.classList.toggle("is-story-active", storyActive);
+				if (stage instanceof HTMLElement) {
+					stage.style.opacity = storyActive ? "1" : "0";
+					stage.style.visibility = storyActive ? "visible" : "hidden";
+				}
+
+				const next = frameForProgress(progress);
+				Object.assign(target, next);
+
+				if (meter instanceof HTMLElement) {
+					meter.style.transform = `scaleY(${progress.toFixed(4)})`;
+				}
+
+				if (shadow instanceof HTMLElement) {
+					const shadowX = isMobile ? lerp(76, 72, progress) : lerp(82, 76, progress);
+					const shadowY = isMobile ? lerp(34, 88, progress) : lerp(38, 86, progress);
+					const shadowScale = lerp(isMobile ? 0.58 : 0.78, 0.42, progress);
+					const shadowOpacity = lerp(0.2, 0.08, progress);
+					shadow.style.setProperty("--shadow-x", `${shadowX.toFixed(2)}%`);
+					shadow.style.setProperty("--shadow-y", `${shadowY.toFixed(2)}%`);
+					shadow.style.setProperty("--shadow-scale", shadowScale.toFixed(3));
+					shadow.style.setProperty("--shadow-opacity", shadowOpacity.toFixed(3));
+				}
+			};
+
+			const setActiveStep = () => {
+				let closest = steps[0];
+				let closestDistance = Number.POSITIVE_INFINITY;
+				const midpoint = window.innerHeight * 0.5;
+
+				for (const step of steps) {
+					const distance = Math.abs(step.getBoundingClientRect().top - midpoint);
+					if (distance < closestDistance) {
+						closestDistance = distance;
+						closest = step;
+					}
+				}
+
+				for (const step of steps) {
+					step.classList.toggle("is-active", step === closest);
+				}
+			};
+
+			const revealModel = () => {
+				modelLoaded = true;
+				root.dataset.modelState = "loaded";
+				root.classList.add("is-loaded");
+				root.classList.remove("is-no-3d");
+				updateProgress();
+				Object.assign(state, target);
+			};
+
+			const loader = new GLTFLoader();
+
+			const loadModel = () => {
+				root.dataset.modelState = "loading";
+				loader.load(
+					"/models/puff.glb",
+					(gltf) => {
+						const model = gltf.scene;
+						const box = new THREE.Box3().setFromObject(model);
+						const center = box.getCenter(new THREE.Vector3());
+						const size = box.getSize(new THREE.Vector3());
+						const maxAxis = Math.max(size.x, size.y, size.z) || 1;
+						const baseScale = (isMobile ? 2.3 : 2.78) / maxAxis;
+
+						model.position.sub(center);
+						model.scale.setScalar(baseScale);
+						model.traverse((node) => {
+							if (node.isMesh) {
+								node.frustumCulled = false;
+								const meshMaterials = Array.isArray(node.material) ? node.material : [node.material];
+								for (const material of meshMaterials) {
+									if (!material) continue;
+									material.transparent = true;
+									material.opacity = 1;
+									material.needsUpdate = true;
+									materials.push(material);
+								}
+							}
+						});
+
+						modelGroup.add(model);
+						revealModel();
+					},
+					(event) => {
+						if (event.total > 0) {
+							root.dataset.modelProgress = `${Math.round((event.loaded / event.total) * 100)}`;
+						}
+					},
+					() => {
+						root.dataset.modelState = "error";
+						root.classList.add("is-no-3d");
+					}
+				);
+			};
+
+			loadModel();
+
+			const render = () => {
+				if (destroyed) return;
+				updateProgress();
+
+				const delta = Math.min(clock.getDelta(), 0.05);
+				const damping = 1 - Math.pow(0.0008, delta);
+				state.x = lerp(state.x, target.x, damping);
+				state.y = lerp(state.y, target.y, damping);
+				state.z = lerp(state.z, target.z, damping);
+				state.rx = lerp(state.rx, target.rx, damping);
+				state.ry = lerp(state.ry, target.ry, damping);
+				state.rz = lerp(state.rz, target.rz, damping);
+				state.scale = lerp(state.scale, target.scale, damping);
+				state.opacity = lerp(state.opacity, target.opacity, damping);
+
+				const elapsed = clock.elapsedTime;
+				const idleY = Math.sin(elapsed * 1.25) * (isMobile ? 0.045 : 0.055);
+				const idleRot = Math.sin(elapsed * 0.75) * 0.035;
+				modelGroup.position.set(state.x, state.y + idleY, state.z);
+				modelGroup.rotation.set(state.rx + idleRot * 0.35, state.ry + idleRot, state.rz + idleRot * 0.65);
+				modelGroup.scale.setScalar(state.scale);
+
+				for (const material of materials) {
+					material.opacity = state.opacity;
+				}
+
+				if (modelLoaded) {
+					canvas.style.opacity = String(clamp(state.opacity, 0.32, 1));
+				}
+
+				renderer.render(scene, camera);
+				rafId = window.requestAnimationFrame(render);
+			};
+
+			resize();
+			updateProgress();
+			setActiveStep();
+			renderer.setClearColor(0x000000, 0);
+			renderer.outputColorSpace = THREE.SRGBColorSpace;
+			renderer.toneMapping = THREE.ACESFilmicToneMapping;
+			renderer.toneMappingExposure = 1.08;
+			rafId = window.requestAnimationFrame(render);
+
+			window.addEventListener("resize", resize);
+			window.addEventListener("scroll", setActiveStep, { passive: true });
+
+			window.addEventListener("pagehide", () => {
+				destroyed = true;
+				window.cancelAnimationFrame(rafId);
+				renderer.dispose();
+				pmrem.dispose();
+				scene.environment?.dispose?.();
+			});
+		}
 	}
 </script>
 
 <style>
-	.hero-puff-scene {
-		--left-x: 0vw;
-		--left-y: 0rem;
-		--left-z: -9deg;
-		--left-yrot: 0deg;
-		--right-x: 0vw;
-		--right-y: 0rem;
-		--right-z: 9deg;
-		--right-yrot: 0deg;
-		--puff-xrot: 0deg;
-		--puff-scale: 1;
-		--puff-opacity: 0.92;
-		--shadow-opacity: 0.18;
-		--shadow-scale: 1;
-		min-height: calc(100svh - 4.4rem);
-		perspective: 900px;
-	}
-
-	.hero-glow {
-		position: absolute;
-		inset: auto;
-		width: 18rem;
-		height: 18rem;
-		border-radius: 999px;
-		filter: blur(46px);
-		opacity: 0.28;
-		pointer-events: none;
-	}
-
-	.hero-glow-left {
-		left: -7rem;
-		top: 18%;
-		background: rgba(40, 224, 143, 0.58);
-	}
-
-	.hero-glow-right {
-		right: -8rem;
-		top: 9%;
-		background: rgba(36, 87, 255, 0.34);
-	}
-
-	.hero-puff-stage {
-		position: absolute;
-		z-index: 1;
-		width: clamp(24rem, 44vw, 36rem);
-		aspect-ratio: 1;
-		pointer-events: none;
-		user-select: none;
-		will-change: transform;
-		transform-style: preserve-3d;
-	}
-
-	.hero-puff-stage-left {
-		left: -4.5rem;
-		top: 12%;
-		transform:
-			translate3d(var(--left-x), var(--left-y), 0)
-			rotateZ(var(--left-z))
-			rotateY(var(--left-yrot))
-			rotateX(var(--puff-xrot))
-			scale(var(--puff-scale));
-	}
-
-	.hero-puff-stage-right {
-		right: -4.5rem;
-		bottom: 15%;
-		transform:
-			translate3d(var(--right-x), var(--right-y), 0)
-			rotateZ(var(--right-z))
-			rotateY(var(--right-yrot))
-			rotateX(var(--puff-xrot))
-			scale(var(--puff-scale));
-	}
-
-	.hero-puff {
+	.puff-scroll-story {
 		position: relative;
+		isolation: isolate;
+		min-height: 990svh;
+		overflow: visible;
+		background:
+			linear-gradient(180deg, rgba(255, 253, 247, 0.98) 0%, rgba(246, 244, 238, 1) 52%, rgba(255, 253, 247, 1) 100%),
+			linear-gradient(135deg, rgba(40, 224, 143, 0.12), transparent 34%),
+			linear-gradient(315deg, rgba(36, 87, 255, 0.1), transparent 38%);
+		color: #101820;
+	}
+
+	.puff-stage {
+		position: fixed;
+		inset: 0;
+		z-index: 0;
+		height: 100svh;
+		overflow: hidden;
+		opacity: 0;
+		pointer-events: none;
+		visibility: hidden;
+		transition:
+			opacity 0.25s ease,
+			visibility 0.25s ease;
+	}
+
+	.puff-scroll-story.is-story-active .puff-stage {
+		opacity: 1;
+		visibility: visible;
+	}
+
+	.story-surface,
+	.story-grid,
+	.story-depth,
+	.puff-canvas,
+	.puff-model-shadow {
+		position: absolute;
+		pointer-events: none;
+	}
+
+	.story-surface {
+		inset: 0;
+		background:
+			linear-gradient(90deg, rgba(255, 253, 247, 0.94) 0%, rgba(255, 253, 247, 0.54) 42%, rgba(255, 253, 247, 0.9) 100%),
+			linear-gradient(180deg, rgba(16, 24, 32, 0.04), transparent 18%, rgba(16, 24, 32, 0.05) 100%);
+	}
+
+	.story-grid {
+		inset: 0;
+		opacity: 0.42;
+		background-image:
+			linear-gradient(rgba(16, 24, 32, 0.055) 1px, transparent 1px),
+			linear-gradient(90deg, rgba(16, 24, 32, 0.055) 1px, transparent 1px);
+		background-size: 42px 42px;
+		mask-image: linear-gradient(180deg, rgba(0, 0, 0, 0.88), rgba(0, 0, 0, 0.18));
+	}
+
+	.story-depth {
+		z-index: 1;
+		border: 1px solid rgba(16, 24, 32, 0.08);
+		background: rgba(255, 255, 255, 0.28);
+		box-shadow: 0 24px 70px rgba(16, 24, 32, 0.08);
+		transform: rotate(-7deg);
+	}
+
+	.story-depth-a {
+		left: 7%;
+		top: 18%;
+		width: min(18rem, 42vw);
+		height: min(12rem, 28vw);
+	}
+
+	.story-depth-b {
+		right: 4%;
+		bottom: 14%;
+		width: min(22rem, 48vw);
+		height: min(13rem, 28vw);
+		transform: rotate(8deg);
+	}
+
+	.story-depth-c {
+		left: 18%;
+		bottom: 8%;
+		width: min(16rem, 34vw);
+		height: min(9rem, 20vw);
+		transform: rotate(14deg);
+	}
+
+	.puff-canvas {
+		inset: 0;
 		z-index: 2;
+		width: 100%;
+		height: 100%;
+		display: block;
+		opacity: 0;
+		transition: opacity 0.45s ease;
+	}
+
+	.puff-model-shadow {
+		--shadow-x: 61%;
+		--shadow-y: 72%;
+		--shadow-scale: 1.1;
+		--shadow-opacity: 0.2;
+		left: var(--shadow-x);
+		top: var(--shadow-y);
+		z-index: 1;
+		width: clamp(8rem, 20vw, 18rem);
+		height: clamp(1.5rem, 3vw, 2.6rem);
+		border-radius: 999px;
+		background: radial-gradient(ellipse, rgba(16, 24, 32, 0.34), rgba(16, 24, 32, 0.08) 62%, transparent 72%);
+		filter: blur(10px);
+		opacity: var(--shadow-opacity);
+		transform: translate(-50%, -50%) scaleX(var(--shadow-scale));
+		transition: opacity 0.25s ease;
+	}
+
+	.puff-scroll-story.is-no-3d .puff-canvas,
+	.puff-scroll-story.is-no-3d .puff-model-shadow {
+		display: none;
+	}
+
+	.story-progress {
+		position: absolute;
+		right: clamp(1rem, 3vw, 2rem);
+		top: 50%;
+		z-index: 8;
+		width: 3px;
+		height: 32vh;
+		overflow: hidden;
+		border-radius: 999px;
+		background: rgba(16, 24, 32, 0.12);
+		transform: translateY(-50%);
+	}
+
+	.story-progress span {
 		display: block;
 		width: 100%;
-		height: auto;
-		opacity: var(--puff-opacity);
-		filter: drop-shadow(0 2rem 2.4rem rgba(16, 24, 32, 0.2));
-		will-change: transform, opacity;
+		height: 100%;
+		border-radius: inherit;
+		background: linear-gradient(180deg, #28e08f, #2457ff);
+		transform: scaleY(0);
+		transform-origin: top;
+		will-change: transform;
 	}
 
-	.hero-puff-left {
-		animation: puff-left-idle 5.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-	}
-
-	.hero-puff-right {
-		animation: puff-right-idle 6.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-	}
-
-	.hero-puff-shadow {
-		position: absolute;
-		left: 36%;
-		bottom: 10%;
-		z-index: 1;
-		width: 29%;
-		height: 5.5%;
-		border-radius: 999px;
-		background: radial-gradient(ellipse, rgba(16, 24, 32, 0.42), rgba(16, 24, 32, 0.08) 62%, transparent 72%);
-		filter: blur(8px);
-		opacity: var(--shadow-opacity);
-		transform: translate3d(0, 0.65rem, -1px) scaleX(var(--shadow-scale));
-		transform-origin: center;
-		will-change: transform, opacity;
-	}
-
-	.hero-metrics {
+	.story-steps {
 		position: relative;
-		z-index: 12;
-		width: min(100%, calc(100vw - 2rem));
-		border-top: 1px solid rgba(16, 24, 32, 0.1);
-		padding-top: 1rem;
+		z-index: 4;
+	}
+
+	.story-step {
+		position: relative;
+		display: grid;
+		min-height: 112svh;
+		align-items: center;
+		padding: 7rem max(1rem, calc((100vw - 1120px) / 2)) 6rem;
+	}
+
+	.story-step-hero {
+		align-items: center;
+		min-height: 104svh;
+		padding-top: 5.4rem;
+	}
+
+	.story-hero-copy,
+	.wide-copy {
+		position: relative;
+		z-index: 6;
+		width: min(44rem, calc(100vw - 2rem));
+		margin-inline: auto;
 		text-align: center;
 	}
 
-	.hero-copy {
-		width: min(100%, calc(100vw - 2rem));
+	.story-kicker,
+	.story-label {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.55rem;
+		margin: 0;
+		color: #116b4c;
+		font-size: 0.72rem;
+		font-weight: 900;
+		letter-spacing: 0;
+		text-transform: uppercase;
 	}
 
-	.hero-metrics > div + div {
+	.story-kicker {
+		padding: 0.55rem 0.75rem;
+		border: 1px solid rgba(16, 24, 32, 0.12);
+		border-radius: 999px;
+		background: rgba(255, 253, 247, 0.76);
+		box-shadow: 0 12px 34px rgba(16, 24, 32, 0.09);
+		backdrop-filter: blur(18px);
+	}
+
+	.story-kicker span {
+		width: 0.5rem;
+		height: 0.5rem;
+		border-radius: 999px;
+		background: #28e08f;
+		box-shadow: 0 0 0 5px rgba(40, 224, 143, 0.18);
+	}
+
+	.story-hero-copy h1 {
+		width: min(100%, 44rem);
+		margin: 1.2rem 0 0;
+		font-size: 4.75rem;
+		font-weight: 950;
+		line-height: 0.92;
+		letter-spacing: 0;
+		text-wrap: balance;
+	}
+
+	.story-lead,
+	.story-panel p,
+	.depth-copy p,
+	.story-final p,
+	.depth-cards p,
+	.story-card-stack p,
+	.advantage-grid p,
+	.feature-panel p {
+		color: #526160;
+		font-size: 1rem;
+		font-weight: 650;
+		line-height: 1.75;
+	}
+
+	.story-lead {
+		width: min(40rem, 100%);
+		margin: 1.25rem auto 0;
+	}
+
+	.story-actions {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: center;
+		gap: 0.8rem;
+		margin-top: 1.5rem;
+	}
+
+	.story-action {
+		min-height: 3.15rem;
+		padding: 0.85rem 1.35rem;
+		font-size: 0.98rem;
+	}
+
+	.story-metrics {
+		display: grid;
+		grid-template-columns: repeat(3, minmax(0, 1fr));
+		width: min(36rem, 100%);
+		margin: 2rem auto 0;
+		border-top: 1px solid rgba(16, 24, 32, 0.1);
+		border-bottom: 1px solid rgba(16, 24, 32, 0.1);
+		background: rgba(255, 253, 247, 0.92);
+		box-shadow: 0 18px 50px rgba(16, 24, 32, 0.07);
+		backdrop-filter: blur(16px);
+	}
+
+	.story-metrics div {
+		padding: 0.9rem 0.55rem;
+		text-align: center;
+	}
+
+	.story-metrics div + div {
 		border-left: 1px solid rgba(16, 24, 32, 0.1);
 	}
 
-	@keyframes puff-left-idle {
-		0%,
-		100% {
-			transform: translate3d(0, 0, 0) rotateZ(-1deg);
-		}
-		50% {
-			transform: translate3d(0, -0.65rem, 0) rotateZ(1.4deg);
-		}
+	.story-metrics strong,
+	.story-metrics span {
+		display: block;
+		letter-spacing: 0;
 	}
 
-	@keyframes puff-right-idle {
-		0%,
-		100% {
-			transform: translate3d(0, 0, 0) rotateZ(1deg);
-		}
-		50% {
-			transform: translate3d(0, 0.75rem, 0) rotateZ(-1.2deg);
-		}
+	.story-metrics strong {
+		font-size: 1.35rem;
+		font-weight: 950;
+	}
+
+	.story-metrics span {
+		margin-top: 0.2rem;
+		color: #687472;
+		font-size: 0.72rem;
+		font-weight: 850;
+		text-transform: uppercase;
+	}
+
+	.story-next-hint {
+		position: absolute;
+		left: 50%;
+		bottom: 1.2rem;
+		width: min(28rem, calc(100vw - 2rem));
+		padding: 0.7rem 0.9rem;
+		border: 1px solid rgba(16, 24, 32, 0.1);
+		border-radius: 8px;
+		background: rgba(255, 253, 247, 0.68);
+		color: #526160;
+		font-size: 0.82rem;
+		font-weight: 800;
+		text-align: center;
+		transform: translateX(-50%);
+		backdrop-filter: blur(14px);
+	}
+
+	.story-panel,
+	.depth-copy,
+	.story-final,
+	.depth-cards article,
+	.story-card-stack article,
+	.advantage-grid article,
+	.feature-panel {
+		border: 1px solid rgba(16, 24, 32, 0.12);
+		border-radius: 8px;
+		background: rgba(255, 253, 247, 0.78);
+		box-shadow: 0 24px 70px rgba(16, 24, 32, 0.1);
+		backdrop-filter: blur(18px);
+	}
+
+	.story-panel,
+	.depth-copy,
+	.story-final {
+		width: min(31.5rem, calc(100vw - 2rem));
+		padding: 1.4rem;
+		opacity: 0.72;
+		transform: translateY(1.2rem);
+		transition:
+			opacity 0.45s ease,
+			transform 0.45s ease,
+			border-color 0.3s ease,
+			box-shadow 0.3s ease;
+	}
+
+	.story-step.is-active .story-panel,
+	.story-step.is-active .depth-copy,
+	.story-step.is-active .story-final {
+		opacity: 1;
+		transform: translateY(0);
+		border-color: rgba(40, 224, 143, 0.38);
+		box-shadow: 0 30px 90px rgba(16, 24, 32, 0.13);
+	}
+
+	.story-panel h2,
+	.depth-copy h2,
+	.story-final h2,
+	.wide-copy h2,
+	.feature-panel h2 {
+		margin: 0.7rem 0 0;
+		font-size: 2.25rem;
+		font-weight: 950;
+		line-height: 1;
+		letter-spacing: 0;
+		text-wrap: balance;
+	}
+
+	.story-panel p,
+	.depth-copy p,
+	.story-final p,
+	.feature-panel p {
+		margin: 1rem 0 0;
+	}
+
+	.story-step-left .story-panel,
+	.story-step-depth .depth-copy {
+		margin-right: auto;
+	}
+
+	.story-step-right .story-panel,
+	.story-step-cta .story-final {
+		margin-left: auto;
+	}
+
+	.story-panel-soft {
+		background:
+			linear-gradient(135deg, rgba(36, 87, 255, 0.12), rgba(255, 253, 247, 0.84) 48%),
+			rgba(255, 253, 247, 0.78);
+	}
+
+	.story-panel-accent {
+		background:
+			linear-gradient(135deg, rgba(40, 224, 143, 0.16), rgba(255, 253, 247, 0.82) 45%),
+			rgba(255, 253, 247, 0.78);
+	}
+
+	.story-step-process {
+		grid-template-columns: minmax(0, 1fr) minmax(18rem, 25rem);
+		gap: clamp(2rem, 6vw, 5rem);
+	}
+
+	.story-card-stack,
+	.depth-cards {
+		position: relative;
+		z-index: 5;
+		display: grid;
+		gap: 0.8rem;
+		width: min(25rem, calc(100vw - 2rem));
+		margin-left: auto;
+	}
+
+	.story-card-stack article,
+	.depth-cards article {
+		padding: 1rem;
+		transition:
+			transform 0.24s ease,
+			border-color 0.24s ease,
+			box-shadow 0.24s ease;
+	}
+
+	.story-card-stack article:hover,
+	.depth-cards article:hover,
+	.advantage-grid article:hover {
+		transform: translateY(-3px);
+		border-color: rgba(36, 87, 255, 0.28);
+		box-shadow: 0 22px 60px rgba(16, 24, 32, 0.12);
+	}
+
+	.story-card-stack span {
+		color: #28e08f;
+		font-size: 0.82rem;
+		font-weight: 950;
+	}
+
+	.story-card-stack h3,
+	.depth-cards h3,
+	.advantage-grid h3 {
+		margin: 0.35rem 0 0;
+		font-size: 1rem;
+		font-weight: 950;
+		letter-spacing: 0;
+	}
+
+	.story-card-stack p,
+	.depth-cards p,
+	.advantage-grid p {
+		margin: 0.45rem 0 0;
+		font-size: 0.88rem;
+		line-height: 1.55;
+	}
+
+	.story-step-depth {
+		grid-template-columns: minmax(0, 1fr) minmax(18rem, 24rem);
+		gap: clamp(2rem, 6vw, 5rem);
+	}
+
+	.mini-timeline {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 0.35rem;
+		margin-top: 1rem;
+	}
+
+	.mini-timeline span {
+		border: 1px solid rgba(16, 24, 32, 0.12);
+		border-radius: 8px;
+		background: rgba(255, 255, 255, 0.62);
+		padding: 0.55rem 0.45rem;
+		font-size: 0.72rem;
+		font-weight: 900;
+		text-align: center;
+	}
+
+	.story-step-advantages {
+		align-content: center;
+		gap: 1.25rem;
+	}
+
+	.advantage-grid {
+		display: grid;
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+		gap: 0.8rem;
+	}
+
+	.advantage-grid article {
+		padding: 1rem;
+		transition:
+			transform 0.24s ease,
+			border-color 0.24s ease,
+			box-shadow 0.24s ease;
+	}
+
+	.advantage-grid span {
+		display: block;
+		width: 2.5rem;
+		height: 0.45rem;
+		border-radius: 999px;
+		background: #28e08f;
+	}
+
+	.story-step-features {
+		justify-items: center;
+	}
+
+	.feature-panel {
+		width: min(58rem, calc(100vw - 2rem));
+		padding: 1.5rem;
+		background:
+			linear-gradient(135deg, rgba(16, 24, 32, 0.98), rgba(16, 24, 32, 0.88)),
+			#101820;
+		color: white;
+	}
+
+	.feature-panel .story-label {
+		color: #28e08f;
+	}
+
+	.feature-panel h2,
+	.feature-panel p {
+		color: white;
+	}
+
+	.feature-panel p {
+		color: rgba(255, 255, 255, 0.68);
+	}
+
+	.feature-grid {
+		display: grid;
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+		gap: 0.7rem;
+		margin-top: 1.2rem;
+	}
+
+	.feature-grid div {
+		display: flex;
+		align-items: center;
+		gap: 0.75rem;
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		border-radius: 8px;
+		background: rgba(255, 255, 255, 0.06);
+		padding: 0.85rem;
+		transition:
+			transform 0.24s ease,
+			border-color 0.24s ease,
+			background-color 0.24s ease;
+	}
+
+	.feature-grid div:hover {
+		transform: translateY(-3px);
+		border-color: rgba(40, 224, 143, 0.48);
+		background: rgba(255, 255, 255, 0.09);
+	}
+
+	.feature-grid span {
+		display: grid;
+		width: 2rem;
+		height: 2rem;
+		flex: 0 0 auto;
+		place-items: center;
+		border-radius: 999px;
+		background: #28e08f;
+		color: #101820;
+		font-weight: 950;
+	}
+
+	.feature-grid p {
+		margin: 0;
+		color: white;
+		font-size: 0.92rem;
+		font-weight: 800;
+		line-height: 1.35;
+	}
+
+	.story-final {
+		text-align: left;
+	}
+
+	.story-final .story-actions {
+		justify-content: flex-start;
 	}
 
 	@media (max-width: 767px) {
-		.hero-puff-scene {
-			min-height: calc(100svh - 3.6rem);
+		.puff-scroll-story {
+			min-height: 1040svh;
 		}
 
-		.hero-puff-stage {
-			width: clamp(13.8rem, 60vw, 15rem);
+		.story-depth-a {
+			left: -16%;
+			top: 20%;
+			width: 15rem;
+			height: 10rem;
 		}
 
-		.hero-puff {
-			filter: drop-shadow(0 1.4rem 1.6rem rgba(16, 24, 32, 0.18));
+		.story-depth-b {
+			right: -24%;
+			bottom: 18%;
+			width: 18rem;
+			height: 11rem;
 		}
 
-		.hero-puff-stage-left {
-			left: -4.15rem;
-			top: 9%;
+		.story-depth-c {
+			left: -18%;
+			bottom: 5%;
+			width: 15rem;
+			height: 8rem;
 		}
 
-		.hero-puff-stage-right {
-			right: -2.9rem;
-			bottom: 56%;
+		.story-progress {
+			right: 0.65rem;
+			height: 26vh;
 		}
 
-		.hero-metrics {
-			margin-top: 2rem;
+		.story-step {
+			min-height: 116svh;
+			padding: 5.2rem 1rem 4.2rem;
 		}
 
-		.hero-copy .btn-primary,
-		.hero-copy .btn-secondary {
+		.story-step-hero {
+			align-items: start;
+			min-height: 104svh;
+			padding-top: 5.2rem;
+		}
+
+		.story-hero-copy {
+			text-align: center;
+		}
+
+		.story-hero-copy h1 {
+			width: min(21.5rem, 100%);
+			margin-inline: auto;
+			font-size: 2.7rem;
+			line-height: 0.98;
+		}
+
+		.story-lead,
+		.story-panel p,
+		.depth-copy p,
+		.story-final p,
+		.feature-panel p {
+			font-size: 0.94rem;
+			line-height: 1.68;
+		}
+
+		.story-actions {
+			display: grid;
+			grid-template-columns: 1fr;
+		}
+
+		.story-action {
+			width: 100%;
+			min-height: 3.1rem;
+		}
+
+		.story-metrics {
+			margin-top: 1.25rem;
+		}
+
+		.story-metrics div {
+			padding: 0.75rem 0.35rem;
+		}
+
+		.story-metrics strong {
+			font-size: 1.05rem;
+		}
+
+		.story-metrics span {
+			font-size: 0.62rem;
+		}
+
+		.story-next-hint {
+			bottom: 0.75rem;
+			font-size: 0.76rem;
+		}
+
+		.story-panel,
+		.depth-copy,
+		.story-final {
 			width: min(100%, calc(100vw - 2rem));
-			max-width: calc(100vw - 2rem);
+			padding: 1.05rem;
+		}
+
+		.story-panel h2,
+		.depth-copy h2,
+		.story-final h2,
+		.wide-copy h2,
+		.feature-panel h2 {
+			font-size: 1.8rem;
+			line-height: 1.04;
+		}
+
+		.story-step-left,
+		.story-step-right {
+			align-items: end;
+		}
+
+		.story-step-process,
+		.story-step-depth {
+			grid-template-columns: 1fr;
+			align-content: center;
+			gap: 0.85rem;
+		}
+
+		.story-card-stack,
+		.depth-cards {
+			width: min(100%, calc(100vw - 2rem));
+			margin: 0;
+		}
+
+		.story-card-stack article,
+		.depth-cards article {
+			padding: 0.9rem;
+		}
+
+		.story-card-stack article:nth-child(2),
+		.depth-cards article:nth-child(2) {
+			margin-left: 1.2rem;
+		}
+
+		.story-card-stack article:nth-child(3),
+		.depth-cards article:nth-child(3) {
+			margin-right: 1.2rem;
+		}
+
+		.mini-timeline {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+
+		.advantage-grid,
+		.feature-grid {
+			grid-template-columns: 1fr;
+		}
+
+		.advantage-grid {
+			gap: 0.65rem;
+		}
+
+		.advantage-grid article,
+		.feature-panel {
+			padding: 0.95rem;
+		}
+
+		.story-final .story-actions {
+			justify-content: stretch;
 		}
 	}
 
-	@media (min-width: 768px) {
-		.hero-puff-stage-left {
-			top: 13%;
+	@media (min-width: 768px) and (max-width: 1060px) {
+		.story-hero-copy h1 {
+			font-size: 4rem;
 		}
 
-		.hero-puff-stage-right {
-			bottom: 9%;
+		.story-step-process,
+		.story-step-depth {
+			grid-template-columns: 1fr;
+		}
+
+		.story-card-stack,
+		.depth-cards {
+			margin: 0 0 0 auto;
+		}
+
+		.advantage-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
 		}
 	}
 
 	@media (prefers-reduced-motion: reduce) {
-		.hero-puff {
+		.story-card-stack article,
+		.depth-cards article,
+		.advantage-grid article,
+		.feature-grid div,
+		.story-panel,
+		.depth-copy,
+		.story-final {
 			animation: none;
-		}
-
-		.hero-puff-stage {
-			transform: none;
+			transition: none;
 		}
 	}
 </style>
