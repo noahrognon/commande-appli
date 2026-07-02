@@ -77,6 +77,19 @@ const formatDate = (value: string | null | undefined) => {
 	return `${day}/${month}/${year}`;
 };
 
+const formatDateTime = (value: string | null | undefined) => {
+	if (!value) return "--";
+	const date = new Date(value);
+	if (Number.isNaN(date.getTime())) return "--";
+	return date.toLocaleString("fr-FR", {
+		day: "2-digit",
+		month: "2-digit",
+		year: "numeric",
+		hour: "2-digit",
+		minute: "2-digit",
+	});
+};
+
 const userMap = new Map(
 	users.map((user) => [
 		user.id,
@@ -84,6 +97,7 @@ const userMap = new Map(
 			email: user.email || "",
 			firstName: user.firstName || "",
 			lastName: user.lastName || "",
+			phone: user.phone || "",
 		},
 	]),
 );
@@ -311,6 +325,93 @@ const openFlavorStats = (flavorsData ?? [])
 	.filter((item) => item.quantity > 0)
 	.sort((a, b) => b.quantity - a.quantity);
 
+const customerOrderStats = new Map<
+	string,
+	{ totalOrders: number; lastOrderAt: Date | null; hasOpenOrder: boolean }
+>();
+
+for (const order of orders) {
+	const stats = customerOrderStats.get(order.user_id) ?? {
+		totalOrders: 0,
+		lastOrderAt: null,
+		hasOpenOrder: false,
+	};
+	stats.totalOrders += 1;
+	if (!stats.lastOrderAt || order.createdAt > stats.lastOrderAt) {
+		stats.lastOrderAt = order.createdAt;
+	}
+	if (openPreorder?.id && order.preorder_id === openPreorder.id) {
+		stats.hasOpenOrder = true;
+	}
+	customerOrderStats.set(order.user_id, stats);
+}
+
+const customerRows = users
+	.map((user) => {
+		const stats = customerOrderStats.get(user.id) ?? {
+			totalOrders: 0,
+			lastOrderAt: null,
+			hasOpenOrder: false,
+		};
+		const fullName =
+			[user.firstName, user.lastName].filter(Boolean).join(" ") || "Client";
+		const currentWaveStatus = !openPreorder
+			? "Aucune vague ouverte"
+			: stats.hasOpenOrder
+				? "A commande"
+				: "A relancer";
+		return {
+			id: user.id,
+			firstName: user.firstName || "",
+			lastName: user.lastName || "",
+			fullName,
+			email: user.email || "",
+			phone: user.phone || "",
+			totalOrders: stats.totalOrders,
+			lastOrderAt: stats.lastOrderAt,
+			hasOpenOrder: stats.hasOpenOrder,
+			currentWaveStatus,
+			search: `${fullName} ${user.email || ""} ${user.phone || ""}`.toLowerCase(),
+		};
+	})
+	.sort((a, b) => a.fullName.localeCompare(b.fullName, "fr"));
+
+const customersToRemind = customerRows.filter(
+	(customer) => openPreorder && customer.email && !customer.hasOpenOrder,
+);
+const customersWithOpenOrder = customerRows.filter((customer) => customer.hasOpenOrder);
+
+const { data: emailCampaignsData, error: emailCampaignsError } =
+	await supabaseAdmin
+		.from("email_campaigns")
+		.select(
+			"id, type, subject, audience, recipient_count, success_count, failure_count, sent_by_email, created_at, sent_at",
+		)
+		.order("created_at", { ascending: false })
+		.limit(8);
+
+const emailCampaigns = emailCampaignsError ? [] : (emailCampaignsData ?? []);
+const { data: campaignRecipientsData } =
+	emailCampaigns.length > 0
+		? await supabaseAdmin
+				.from("email_campaign_recipients")
+				.select(
+					"campaign_id, email, first_name, last_name, status, error, sent_at, created_at",
+				)
+				.in(
+					"campaign_id",
+					emailCampaigns.map((campaign) => campaign.id),
+				)
+				.order("created_at", { ascending: false })
+		: { data: [] };
+
+const campaignRecipientsByCampaign = new Map<string, any[]>();
+for (const recipient of campaignRecipientsData ?? []) {
+	const list = campaignRecipientsByCampaign.get(recipient.campaign_id) ?? [];
+	list.push(recipient);
+	campaignRecipientsByCampaign.set(recipient.campaign_id, list);
+}
+
 const formatNumber = (value: number) => Math.round(value).toString();
 ---
 
@@ -344,6 +445,16 @@ const formatNumber = (value: number) => Math.round(value).toString();
 					class="tab-button"
 					data-tab-target="orders"
 					type="button">Commandes</button
+				>
+				<button
+					class="tab-button"
+					data-tab-target="clients"
+					type="button">Clients</button
+				>
+				<button
+					class="tab-button"
+					data-tab-target="campaigns"
+					type="button">Emails</button
 				>
 				<button
 					class="tab-button"
@@ -1349,6 +1460,322 @@ const formatNumber = (value: number) => Math.round(value).toString();
 			</section>
 
 			<section
+				data-tab-panel="clients"
+				class="relative z-10 hidden flex-col gap-6"
+			>
+				<div class="admin-section-header">
+					<div>
+						<p class="admin-eyebrow">Relation client</p>
+						<h2>Clients</h2>
+						<p>Liste des comptes, statut sur la vague actuelle et relance rapide des personnes qui n'ont pas encore commande.</p>
+					</div>
+					<span>{formatNumber(customerRows.length)} client(s)</span>
+				</div>
+
+				<div class="grid gap-4 md:grid-cols-4">
+					<div class="metric-card">
+						<p class="metric-label">Clients inscrits</p>
+						<p class="metric-value">{formatNumber(customerRows.length)}</p>
+						<p class="metric-sub">Comptes dans Supabase</p>
+					</div>
+					<div class="metric-card">
+						<p class="metric-label">A relancer</p>
+						<p class="metric-value">{formatNumber(customersToRemind.length)}</p>
+						<p class="metric-sub">Sans commande sur la vague</p>
+					</div>
+					<div class="metric-card">
+						<p class="metric-label">Ont commande</p>
+						<p class="metric-value">{formatNumber(customersWithOpenOrder.length)}</p>
+						<p class="metric-sub">Sur la vague ouverte</p>
+					</div>
+					<div class="metric-card">
+						<p class="metric-label">Vague active</p>
+						<p class="metric-value text-[1.25rem] leading-tight">
+							{openPreorder ? openPreorder.name : "Aucune"}
+						</p>
+						<p class="metric-sub">
+							{openPreorder ? `Fin ${formatDate(openPreorder.end_date)}` : "Relance inactive"}
+						</p>
+					</div>
+				</div>
+
+				<div class="grid gap-4 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+					<div class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50">
+						<div class="flex flex-col gap-2">
+							<p class="text-sm font-semibold text-slate-900">
+								Relancer ceux qui n'ont pas commande
+							</p>
+							<p class="text-xs font-semibold text-slate-500">
+								{formatNumber(customersToRemind.length)} client(s) concernes. Le message part uniquement aux clients sans commande sur la vague ouverte.
+							</p>
+						</div>
+						<div class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+							<p class="text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+								Preview email
+							</p>
+							<p class="mt-3 text-sm font-black text-slate-900">
+								Objet : La vague va partir sans toi
+							</p>
+							<p class="mt-2 text-sm font-semibold leading-6 text-slate-600">
+								Salut {customersToRemind[0]?.firstName || "{{prenom}}"}, petite relance avant fermeture : la vague de precommande ferme bientot. Si tu veux securiser ton stock, c'est le bon moment. Apres, la commande part fournisseur et on ne pourra plus ajouter de cartons a cette vague.
+							</p>
+							<span class="mt-4 inline-flex rounded-full bg-[#101820] px-4 py-2 text-xs font-black text-white">
+								Commander avant fermeture
+							</span>
+						</div>
+						<div class="mt-5 flex flex-wrap items-center gap-3">
+							<button
+								type="button"
+								class="action-button action-primary"
+								data-action="send-client-reminder"
+								data-preorder-id={openPreorder?.id || ""}
+								disabled={!openPreorder || customersToRemind.length === 0}
+							>
+								Envoyer la relance
+							</button>
+							<p class="text-xs font-semibold text-slate-500" data-client-reminder-status></p>
+						</div>
+					</div>
+
+					<div class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50">
+						<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+							<div>
+								<p class="text-sm font-semibold text-slate-900">Liste clients</p>
+								<p class="text-xs text-slate-500">Nom, contact, historique et statut sur la vague actuelle.</p>
+							</div>
+							<input
+								type="text"
+								data-client-search
+								placeholder="Rechercher un client"
+								class="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none"
+							/>
+						</div>
+						<div class="mt-5 grid gap-3" data-client-list>
+							{customerRows.map((customer) => (
+								<article
+									class="client-row rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4"
+									data-client-row
+									data-search={customer.search}
+								>
+									<div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+										<div>
+											<p class="text-sm font-black text-slate-900">{customer.fullName}</p>
+											<p class="mt-1 text-xs font-semibold text-slate-500">
+												{customer.email || "Email manquant"} {customer.phone ? `- ${customer.phone}` : ""}
+											</p>
+										</div>
+										<div class="flex flex-wrap items-center gap-2">
+											<span class={`badge ${customer.hasOpenOrder ? "badge-success" : openPreorder ? "badge-warning" : "badge-info"}`}>
+												{customer.currentWaveStatus}
+											</span>
+											<span class="badge badge-info">
+												{formatNumber(customer.totalOrders)} commande(s)
+											</span>
+											<span class="badge">
+												Derniere : {customer.lastOrderAt ? formatDate(customer.lastOrderAt.toISOString()) : "--"}
+											</span>
+										</div>
+									</div>
+								</article>
+							))}
+							{customerRows.length === 0 && (
+								<p class="text-sm text-slate-500">Aucun client inscrit pour le moment.</p>
+							)}
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<section
+				data-tab-panel="campaigns"
+				class="relative z-10 hidden flex-col gap-6"
+			>
+				<div class="admin-section-header">
+					<div>
+						<p class="admin-eyebrow">Campagnes email</p>
+						<h2>Emails</h2>
+						<p>Redige un mail libre, teste-le, choisis les destinataires puis garde un historique des envois.</p>
+					</div>
+					<span>{formatNumber(emailCampaigns.length)} campagne(s)</span>
+				</div>
+
+				<div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.75fr)]">
+					<form
+						class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50"
+						data-campaign-form
+						data-sample-first-name={customerRows[0]?.firstName || "Noah"}
+						data-sample-last-name={customerRows[0]?.lastName || "Test"}
+						data-sample-end-date={openPreorder?.end_date || ""}
+					>
+						<div class="grid gap-4 lg:grid-cols-2">
+							<label class="space-y-2 text-sm text-slate-600 lg:col-span-2">
+								<span class="font-medium text-slate-800">Objet</span>
+								<input
+									type="text"
+									name="subject"
+									required
+									value="La precommande ferme bientot"
+									class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
+								/>
+							</label>
+							<label class="space-y-2 text-sm text-slate-600 lg:col-span-2">
+								<span class="font-medium text-slate-800">Message</span>
+								<textarea
+									name="message"
+									rows="8"
+									required
+									class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
+								>{`Salut {{prenom}}, petit rappel : la precommande ferme le {{date_fin_precommande}}. Si tu veux reserver ton stock, c'est le moment.`}</textarea>
+							</label>
+							<label class="space-y-2 text-sm text-slate-600">
+								<span class="font-medium text-slate-800">Bouton CTA</span>
+								<input
+									type="text"
+									name="ctaLabel"
+									value="Commander maintenant"
+									class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
+								/>
+							</label>
+							<label class="space-y-2 text-sm text-slate-600">
+								<span class="font-medium text-slate-800">Lien CTA</span>
+								<input
+									type="text"
+									name="ctaUrl"
+									value="/precommande"
+									class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
+								/>
+							</label>
+							<label class="space-y-2 text-sm text-slate-600">
+								<span class="font-medium text-slate-800">Destinataires</span>
+								<select
+									name="audience"
+									data-campaign-audience
+									class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
+								>
+									<option value="all">Tous les clients</option>
+									<option value="without_current_order">Sans commande sur la vague actuelle</option>
+									<option value="with_current_order">Avec commande sur la vague actuelle</option>
+									<option value="previous_buyers">Clients ayant deja commande</option>
+									<option value="selected">Selection manuelle</option>
+								</select>
+							</label>
+							<label class="space-y-2 text-sm text-slate-600">
+								<span class="font-medium text-slate-800">Email de test</span>
+								<input
+									type="email"
+									name="testEmail"
+									value={admin.email}
+									class="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 outline-none"
+								/>
+							</label>
+						</div>
+
+						<div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+							<p class="text-xs font-black uppercase tracking-[0.16em] text-slate-400">
+								Variables disponibles
+							</p>
+							<p class="mt-2 text-xs font-semibold leading-6 text-slate-600">
+								{"{{prenom}}"} · {"{{nom}}"} · {"{{date_fin_precommande}}"}
+							</p>
+						</div>
+
+						<div class="mt-4 hidden rounded-2xl border border-slate-200 bg-slate-50 p-4" data-selected-clients-block>
+							<p class="text-sm font-semibold text-slate-900">Selection manuelle</p>
+							<div class="mt-3 grid max-h-64 gap-2 overflow-y-auto pr-1">
+								{customerRows.map((customer) => (
+									<label class="flex items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-slate-700">
+										<input
+											type="checkbox"
+											data-campaign-recipient
+											value={customer.id}
+											disabled={!customer.email}
+										/>
+										<span>{customer.fullName}</span>
+										<span class="ml-auto text-xs text-slate-400">{customer.email || "email manquant"}</span>
+									</label>
+								))}
+							</div>
+						</div>
+
+						<div class="mt-5 flex flex-wrap items-center gap-3">
+							<button type="button" class="action-button action-primary" data-campaign-test>
+								Envoyer un test
+							</button>
+							<button type="submit" class="action-button action-success">
+								Envoyer la campagne
+							</button>
+							<p class="text-xs font-semibold text-slate-500" data-campaign-status></p>
+						</div>
+					</form>
+
+					<div class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50">
+						<p class="text-sm font-semibold text-slate-900">Apercu</p>
+						<div class="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+							<p class="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Objet</p>
+							<p class="mt-2 text-sm font-black text-slate-900" data-campaign-preview-subject></p>
+							<p class="mt-4 text-xs font-black uppercase tracking-[0.16em] text-slate-400">Message</p>
+							<p class="mt-2 whitespace-pre-line text-sm font-semibold leading-6 text-slate-600" data-campaign-preview-message></p>
+							<span class="mt-4 inline-flex rounded-full bg-[#101820] px-4 py-2 text-xs font-black text-white" data-campaign-preview-cta></span>
+						</div>
+					</div>
+				</div>
+
+				<div class="rounded-3xl bg-white/85 p-6 shadow-lg shadow-slate-200/60 ring-1 ring-white/50">
+					<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+						<div>
+							<p class="text-sm font-semibold text-slate-900">Historique</p>
+							<p class="text-xs text-slate-500">Campagnes envoyees, volumes, erreurs et destinataires.</p>
+						</div>
+						{emailCampaignsError && (
+							<span class="badge badge-warning">SQL email-campaigns a appliquer</span>
+						)}
+					</div>
+					<div class="mt-5 grid gap-3">
+						{emailCampaigns.map((campaign: any) => {
+							const recipients = campaignRecipientsByCampaign.get(campaign.id) ?? [];
+							return (
+								<details class="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4">
+									<summary class="cursor-pointer list-none">
+										<div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+											<div>
+												<p class="text-sm font-black text-slate-900">{campaign.subject}</p>
+												<p class="mt-1 text-xs font-semibold text-slate-500">
+													{formatDateTime(campaign.sent_at || campaign.created_at)} · {campaign.audience}
+												</p>
+											</div>
+											<div class="flex flex-wrap gap-2">
+												<span class="badge badge-info">{formatNumber(Number(campaign.recipient_count || 0))} destinataire(s)</span>
+												<span class="badge badge-success">{formatNumber(Number(campaign.success_count || 0))} envoye(s)</span>
+												<span class="badge badge-error">{formatNumber(Number(campaign.failure_count || 0))} erreur(s)</span>
+											</div>
+										</div>
+									</summary>
+									<div class="mt-4 grid gap-2">
+										{recipients.map((recipient) => (
+											<div class="flex flex-col gap-1 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-slate-600 sm:flex-row sm:items-center sm:justify-between">
+												<span>
+													{[recipient.first_name, recipient.last_name].filter(Boolean).join(" ") || "Client"} · {recipient.email}
+												</span>
+												<span class={`badge ${recipient.status === "sent" ? "badge-success" : "badge-error"}`}>
+													{recipient.status === "sent" ? "Envoye" : recipient.error || "Erreur"}
+												</span>
+											</div>
+										))}
+										{recipients.length === 0 && (
+											<p class="text-xs font-semibold text-slate-500">Aucun detail destinataire.</p>
+										)}
+									</div>
+								</details>
+							);
+						})}
+						{emailCampaigns.length === 0 && (
+							<p class="text-sm text-slate-500">Aucune campagne envoyee pour le moment.</p>
+						)}
+					</div>
+				</div>
+			</section>
+
+			<section
 				data-tab-panel="preorders"
 				class="relative z-10 hidden flex-col gap-6"
 			>
@@ -1698,6 +2125,16 @@ const formatNumber = (value: number) => Math.round(value).toString();
 	);
 	const promoForm = document.querySelector("[data-promo-form]");
 	const promoFormStatus = document.querySelector("[data-promo-form-status]");
+	const clientSearchInput = document.querySelector("[data-client-search]");
+	const clientRows = Array.from(document.querySelectorAll("[data-client-row]"));
+	const clientReminderStatus = document.querySelector("[data-client-reminder-status]");
+	const campaignForm = document.querySelector("[data-campaign-form]");
+	const campaignAudience = document.querySelector("[data-campaign-audience]");
+	const selectedClientsBlock = document.querySelector("[data-selected-clients-block]");
+	const campaignStatus = document.querySelector("[data-campaign-status]");
+	const campaignPreviewSubject = document.querySelector("[data-campaign-preview-subject]");
+	const campaignPreviewMessage = document.querySelector("[data-campaign-preview-message]");
+	const campaignPreviewCta = document.querySelector("[data-campaign-preview-cta]");
 	let activeStatus = "all";
 	let activePreorder =
 		preorderFilter instanceof HTMLSelectElement
@@ -1744,6 +2181,133 @@ const formatNumber = (value: number) => Math.round(value).toString();
 	}
 
 	applyFilters();
+
+	if (clientSearchInput) {
+		clientSearchInput.addEventListener("input", () => {
+			const query = (clientSearchInput.value || "").trim().toLowerCase();
+			clientRows.forEach((row) => {
+				const search = row.dataset.search || "";
+				row.classList.toggle("hidden", Boolean(query && !search.includes(query)));
+			});
+		});
+	}
+
+	const replacePreviewVariables = (value) => {
+		if (!(campaignForm instanceof HTMLFormElement)) return value || "";
+		const firstName = campaignForm.dataset.sampleFirstName || "Noah";
+		const lastName = campaignForm.dataset.sampleLastName || "Test";
+		const rawDate = campaignForm.dataset.sampleEndDate || "";
+		const endDate = rawDate
+			? new Date(rawDate).toLocaleDateString("fr-FR", {
+					day: "2-digit",
+					month: "2-digit",
+					year: "numeric",
+				})
+			: "";
+		return String(value || "")
+			.replace(/\{\{\s*prenom\s*\}\}/gi, firstName)
+			.replace(/\{\{\s*nom\s*\}\}/gi, lastName)
+			.replace(/\{\{\s*date_fin_precommande\s*\}\}/gi, endDate);
+	};
+
+	const updateCampaignPreview = () => {
+		if (!(campaignForm instanceof HTMLFormElement)) return;
+		const formData = new FormData(campaignForm);
+		const subject = replacePreviewVariables(formData.get("subject"));
+		const message = replacePreviewVariables(formData.get("message"));
+		const ctaLabel = replacePreviewVariables(formData.get("ctaLabel"));
+		if (campaignPreviewSubject) campaignPreviewSubject.textContent = subject || "Objet du mail";
+		if (campaignPreviewMessage) campaignPreviewMessage.textContent = message || "Message";
+		if (campaignPreviewCta instanceof HTMLElement) {
+			campaignPreviewCta.textContent = ctaLabel || "Aucun bouton";
+			campaignPreviewCta.classList.toggle("hidden", !ctaLabel);
+		}
+	};
+
+	const updateSelectedClientsVisibility = () => {
+		if (!(campaignAudience instanceof HTMLSelectElement) || !(selectedClientsBlock instanceof HTMLElement)) return;
+		selectedClientsBlock.classList.toggle("hidden", campaignAudience.value !== "selected");
+	};
+
+	const getSelectedCampaignRecipients = () => {
+		if (!(campaignForm instanceof HTMLFormElement)) return [];
+		return Array.from(campaignForm.querySelectorAll("[data-campaign-recipient]:checked"))
+			.map((input) => input instanceof HTMLInputElement ? input.value : "")
+			.filter(Boolean);
+	};
+
+	const sendCampaignRequest = async (mode) => {
+		if (!(campaignForm instanceof HTMLFormElement)) return;
+		const formData = new FormData(campaignForm);
+		const submitButton =
+			mode === "test"
+				? campaignForm.querySelector("[data-campaign-test]")
+				: campaignForm.querySelector("button[type='submit']");
+		if (submitButton instanceof HTMLButtonElement) {
+			submitButton.disabled = true;
+			submitButton.textContent = mode === "test" ? "Test..." : "Envoi...";
+		}
+		if (campaignStatus) {
+			campaignStatus.textContent =
+				mode === "test" ? "Envoi du test..." : "Envoi de la campagne...";
+		}
+		try {
+			const response = await fetch("/api/admin/send-campaign-email", {
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({
+					mode,
+					subject: formData.get("subject"),
+					message: formData.get("message"),
+					ctaLabel: formData.get("ctaLabel"),
+					ctaUrl: formData.get("ctaUrl"),
+					audience: formData.get("audience"),
+					testEmail: formData.get("testEmail"),
+					selectedUserIds: getSelectedCampaignRecipients(),
+				}),
+			});
+			const result = await response.json();
+			if (!response.ok) throw new Error(result?.error || "Erreur");
+			if (campaignStatus) {
+				campaignStatus.textContent =
+					mode === "test"
+						? "Email de test envoye."
+						: `Campagne envoyee : ${result?.sent ?? 0} succes, ${result?.failed ?? 0} erreur(s).`;
+			}
+			if (mode !== "test") {
+				window.setTimeout(() => window.location.reload(), 900);
+			}
+		} catch (error) {
+			if (campaignStatus) {
+				campaignStatus.textContent =
+					error instanceof Error ? error.message : "Envoi impossible.";
+			}
+			console.error(error);
+		} finally {
+			if (submitButton instanceof HTMLButtonElement) {
+				submitButton.disabled = false;
+				submitButton.textContent = mode === "test" ? "Envoyer un test" : "Envoyer la campagne";
+			}
+		}
+	};
+
+	if (campaignForm instanceof HTMLFormElement) {
+		campaignForm.addEventListener("input", updateCampaignPreview);
+		campaignForm.addEventListener("submit", async (event) => {
+			event.preventDefault();
+			await sendCampaignRequest("send");
+		});
+		const testButton = campaignForm.querySelector("[data-campaign-test]");
+		if (testButton instanceof HTMLButtonElement) {
+			testButton.addEventListener("click", () => sendCampaignRequest("test"));
+		}
+		updateCampaignPreview();
+	}
+
+	if (campaignAudience instanceof HTMLSelectElement) {
+		campaignAudience.addEventListener("change", updateSelectedClientsVisibility);
+		updateSelectedClientsVisibility();
+	}
 
 	if (preorderForm instanceof HTMLFormElement) {
 		preorderForm.addEventListener("submit", async (event) => {
@@ -1845,6 +2409,41 @@ const formatNumber = (value: number) => Math.round(value).toString();
 	document.addEventListener("click", async (event) => {
 		const target = event.target;
 		if (!(target instanceof HTMLElement)) return;
+
+		const reminderButton = target.closest("[data-action='send-client-reminder']");
+		if (reminderButton) {
+			const preorderId = reminderButton.getAttribute("data-preorder-id") || "";
+			if (!preorderId) return;
+			const originalText = reminderButton.textContent || "";
+			reminderButton.setAttribute("disabled", "true");
+			reminderButton.textContent = "Envoi...";
+			if (clientReminderStatus) {
+				clientReminderStatus.textContent = "Envoi de la relance aux clients concernes...";
+			}
+			try {
+				const response = await fetch("/api/admin/send-client-reminder", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ preorderId }),
+				});
+				const result = await response.json();
+				if (!response.ok) throw new Error(result?.error || "Erreur");
+				if (clientReminderStatus) {
+					clientReminderStatus.textContent = `Relance envoyee : ${result?.sent ?? 0} succes, ${result?.failed ?? 0} erreur(s).`;
+				}
+				window.setTimeout(() => window.location.reload(), 900);
+			} catch (error) {
+				if (clientReminderStatus) {
+					clientReminderStatus.textContent =
+						error instanceof Error ? error.message : "Relance impossible.";
+				}
+				console.error(error);
+			} finally {
+				reminderButton.removeAttribute("disabled");
+				reminderButton.textContent = originalText;
+			}
+			return;
+		}
 
 		const toggleButton = target.closest("[data-action='toggle-order']");
 		if (toggleButton) {

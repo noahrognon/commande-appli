@@ -5,6 +5,7 @@ export type UserInfo = {
 	email: string;
 	firstName: string;
 	lastName: string;
+	phone: string;
 };
 
 export const fetchUsersMap = async (client: SupabaseClient) => {
@@ -20,7 +21,11 @@ export const fetchUsersMap = async (client: SupabaseClient) => {
 				id: user.id,
 				email: user.email || "",
 				firstName: (user.user_metadata?.first_name as string) || "",
-				lastName: (user.user_metadata?.last_name as string) || ""
+				lastName: (user.user_metadata?.last_name as string) || "",
+				phone:
+					(user.phone as string) ||
+					(user.user_metadata?.phone as string) ||
+					""
 			});
 		}
 		if (data.users.length < perPage) break;
