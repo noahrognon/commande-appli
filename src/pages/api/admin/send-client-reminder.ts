@@ -21,9 +21,12 @@ export const POST: APIRoute = async ({ request }) => {
 		});
 	}
 
-	let body: { preorderId?: string } = {};
+	let body: { preorderId?: string; selectedUserIds?: string[] } = {};
 	try {
-		body = (await request.json()) as { preorderId?: string };
+		body = (await request.json()) as {
+			preorderId?: string;
+			selectedUserIds?: string[];
+		};
 	} catch {
 		body = {};
 	}
@@ -61,21 +64,30 @@ export const POST: APIRoute = async ({ request }) => {
 		});
 	}
 
-	const orderedUserIds = new Set((currentOrders ?? []).map((order: any) => order.user_id));
+	const orderedUserIds = new Set(
+		(currentOrders ?? []).map((order: any) => order.user_id)
+	);
+	const selectedUserIds = Array.isArray(body.selectedUserIds)
+		? new Set(body.selectedUserIds.filter(Boolean))
+		: new Set<string>();
+	const isManualSelection = selectedUserIds.size > 0;
 	const recipients = Array.from(usersMap.values()).filter(
 		(user) => user.email && !orderedUserIds.has(user.id)
 	);
+	const selectedRecipients = isManualSelection
+		? recipients.filter((user) => selectedUserIds.has(user.id))
+		: recipients;
 
-	if (recipients.length === 0) {
-		return new Response(JSON.stringify({ ok: true, sent: 0, failed: 0 }), {
-			status: 200,
+	if (selectedRecipients.length === 0) {
+		return new Response(JSON.stringify({ error: "Aucun client selectionne a relancer." }), {
+			status: 400,
 			headers: { "content-type": "application/json" }
 		});
 	}
 
 	const preview = getNoOrderReminderEmail({
-		firstName: recipients[0]?.firstName,
-		lastName: recipients[0]?.lastName,
+		firstName: selectedRecipients[0]?.firstName,
+		lastName: selectedRecipients[0]?.lastName,
 		preorderName: preorder.name,
 		endDate: preorder.end_date
 	});
@@ -89,10 +101,12 @@ export const POST: APIRoute = async ({ request }) => {
 				"Salut {{prenom}}, petite relance avant fermeture : la vague de precommande ferme bientot. Si tu veux securiser ton stock, c'est le bon moment. Apres, la commande part fournisseur et on ne pourra plus ajouter de cartons a cette vague.",
 			cta_label: "Commander avant fermeture",
 			cta_url: "/precommande",
-			audience: "without_current_order",
+			audience: isManualSelection
+				? "selected_without_current_order"
+				: "without_current_order",
 			preorder_id: preorder.id,
 			sent_by_email: admin.email,
-			recipient_count: recipients.length,
+			recipient_count: selectedRecipients.length,
 			success_count: 0,
 			failure_count: 0
 		})
@@ -113,7 +127,7 @@ export const POST: APIRoute = async ({ request }) => {
 	let sent = 0;
 	let failed = 0;
 
-	for (const user of recipients) {
+	for (const user of selectedRecipients) {
 		const emailContent = getNoOrderReminderEmail({
 			firstName: user.firstName,
 			lastName: user.lastName,

@@ -1509,6 +1509,60 @@ const formatNumber = (value: number) => Math.round(value).toString();
 								{formatNumber(customersToRemind.length)} client(s) concernes. Le message part uniquement aux clients sans commande sur la vague ouverte.
 							</p>
 						</div>
+						<div class="mt-5 rounded-2xl border border-slate-200 bg-white p-4">
+							<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+								<div>
+									<p class="text-sm font-black text-slate-900">
+										Selection relance
+									</p>
+									<p class="text-xs font-semibold text-slate-500">
+										<span data-reminder-selected-count>{formatNumber(customersToRemind.length)}</span> selectionne(s) sur {formatNumber(customersToRemind.length)}
+									</p>
+								</div>
+								<div class="flex flex-wrap gap-2">
+									<button
+										type="button"
+										class="filter-button"
+										data-action="set-reminder-selection"
+										data-selection-mode="all"
+										disabled={customersToRemind.length === 0}
+									>
+										Tout cocher
+									</button>
+									<button
+										type="button"
+										class="filter-button"
+										data-action="set-reminder-selection"
+										data-selection-mode="none"
+										disabled={customersToRemind.length === 0}
+									>
+										Tout decocher
+									</button>
+								</div>
+							</div>
+							<div class="mt-3 grid max-h-72 gap-2 overflow-y-auto pr-1" data-reminder-selection-list>
+								{customersToRemind.map((customer) => (
+									<label class="flex items-center gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-700">
+										<input
+											type="checkbox"
+											data-reminder-recipient
+											value={customer.id}
+											checked
+										/>
+										<span class="min-w-0">
+											<span class="block truncate text-slate-900">{customer.fullName}</span>
+											<span class="block truncate text-xs text-slate-500">{customer.email}</span>
+										</span>
+										<span class="ml-auto shrink-0 badge badge-warning">A relancer</span>
+									</label>
+								))}
+								{customersToRemind.length === 0 && (
+									<p class="rounded-xl bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-500">
+										Aucun client a relancer sur la vague actuelle.
+									</p>
+								)}
+							</div>
+						</div>
 						<div class="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4">
 							<p class="text-xs font-black uppercase tracking-[0.16em] text-slate-400">
 								Preview email
@@ -2128,6 +2182,10 @@ const formatNumber = (value: number) => Math.round(value).toString();
 	const clientSearchInput = document.querySelector("[data-client-search]");
 	const clientRows = Array.from(document.querySelectorAll("[data-client-row]"));
 	const clientReminderStatus = document.querySelector("[data-client-reminder-status]");
+	const reminderSelectedCount = document.querySelector("[data-reminder-selected-count]");
+	const reminderRecipients = Array.from(
+		document.querySelectorAll("[data-reminder-recipient]"),
+	);
 	const campaignForm = document.querySelector("[data-campaign-form]");
 	const campaignAudience = document.querySelector("[data-campaign-audience]");
 	const selectedClientsBlock = document.querySelector("[data-selected-clients-block]");
@@ -2191,6 +2249,31 @@ const formatNumber = (value: number) => Math.round(value).toString();
 			});
 		});
 	}
+
+	const getSelectedReminderRecipients = () =>
+		reminderRecipients
+			.map((input) =>
+				input instanceof HTMLInputElement && input.checked ? input.value : "",
+			)
+			.filter(Boolean);
+
+	const updateReminderSelectionCount = () => {
+		const selected = getSelectedReminderRecipients();
+		if (reminderSelectedCount) {
+			reminderSelectedCount.textContent = String(selected.length);
+		}
+		const reminderButton = document.querySelector(
+			"[data-action='send-client-reminder']",
+		);
+		if (reminderButton instanceof HTMLButtonElement) {
+			reminderButton.disabled = selected.length === 0 || !reminderButton.dataset.preorderId;
+		}
+	};
+
+	reminderRecipients.forEach((input) => {
+		input.addEventListener("change", updateReminderSelectionCount);
+	});
+	updateReminderSelectionCount();
 
 	const replacePreviewVariables = (value) => {
 		if (!(campaignForm instanceof HTMLFormElement)) return value || "";
@@ -2410,10 +2493,33 @@ const formatNumber = (value: number) => Math.round(value).toString();
 		const target = event.target;
 		if (!(target instanceof HTMLElement)) return;
 
+		const reminderSelectionButton = target.closest(
+			"[data-action='set-reminder-selection']",
+		);
+		if (reminderSelectionButton) {
+			const mode =
+				reminderSelectionButton.getAttribute("data-selection-mode") || "all";
+			reminderRecipients.forEach((input) => {
+				if (input instanceof HTMLInputElement) {
+					input.checked = mode === "all";
+				}
+			});
+			updateReminderSelectionCount();
+			return;
+		}
+
 		const reminderButton = target.closest("[data-action='send-client-reminder']");
 		if (reminderButton) {
 			const preorderId = reminderButton.getAttribute("data-preorder-id") || "";
 			if (!preorderId) return;
+			const selectedUserIds = getSelectedReminderRecipients();
+			if (selectedUserIds.length === 0) {
+				if (clientReminderStatus) {
+					clientReminderStatus.textContent =
+						"Selectionne au moins un client a relancer.";
+				}
+				return;
+			}
 			const originalText = reminderButton.textContent || "";
 			reminderButton.setAttribute("disabled", "true");
 			reminderButton.textContent = "Envoi...";
@@ -2424,7 +2530,7 @@ const formatNumber = (value: number) => Math.round(value).toString();
 				const response = await fetch("/api/admin/send-client-reminder", {
 					method: "POST",
 					headers: { "content-type": "application/json" },
-					body: JSON.stringify({ preorderId }),
+					body: JSON.stringify({ preorderId, selectedUserIds }),
 				});
 				const result = await response.json();
 				if (!response.ok) throw new Error(result?.error || "Erreur");
