@@ -2,7 +2,8 @@
 import Layout from "../layouts/Layout.astro";
 import DashboardNav from "../components/DashboardNav.astro";
 import { createClient } from "@supabase/supabase-js";
-import { PRICE_PER_CARTON, SAVINGS_PER_CARTON } from "../lib/orderPricing";
+import { PRICE_PER_CARTON, COMPETITOR_PRICE_PER_CARTON } from "../lib/orderPricing";
+import type { PromoShape } from "../lib/orderPricing";
 
 export const prerender = false;
 
@@ -20,7 +21,7 @@ if (userError || !user) return Astro.redirect("/login");
 
 const { data: ordersData } = await adminClient
 	.from("orders")
-	.select("id, order_number, cartons, total, status, estimated_delivery_start, estimated_delivery_end, payment_method, preorder_id, created_at, payment_proof_status, payment_proof_rejection_reason")
+	.select("id, order_number, cartons, total, status, estimated_delivery_start, estimated_delivery_end, payment_method, preorder_id, created_at, payment_proof_status, payment_proof_rejection_reason, promo_code_id")
 	.eq("user_id", user.id)
 	.order("created_at", { ascending: false });
 
@@ -29,6 +30,18 @@ const orderIds = orders.map((o) => o.id);
 
 const { data: openPreordersData } = await adminClient.from("preorders").select("id").eq("status", "open");
 const openPreorders = new Set((openPreordersData ?? []).map((p) => p.id));
+
+const promoIds = [...new Set(orders
+	.filter((order) => openPreorders.has(order.preorder_id) && order.promo_code_id)
+	.map((order) => order.promo_code_id))];
+const orderPromos = new Map<string, PromoShape>();
+if (promoIds.length > 0) {
+	const { data: promos } = await adminClient
+		.from("promo_codes")
+		.select("id, type, value, min_cartons")
+		.in("id", promoIds);
+	for (const promo of promos ?? []) orderPromos.set(promo.id, promo);
+}
 
 let flavorCounts: Record<string, number> = {};
 const supplierSentOrders = new Set<string>();
@@ -56,7 +69,10 @@ if (orderIds.length > 0) {
 const totalOrders = orders.length;
 const totalCartons = orders.reduce((sum, o) => sum + Number(o.cartons || 0), 0);
 const totalSpent = orders.reduce((sum, o) => sum + Number(o.total || 0), 0);
-const totalSavings = totalCartons * SAVINGS_PER_CARTON;
+const totalSavings = orders.reduce((sum, order) => sum + Math.max(
+	0,
+	Number(order.cartons || 0) * COMPETITOR_PRICE_PER_CARTON - Number(order.total || 0),
+), 0);
 
 const formatDate = (value: string | null) => {
 	if (!value) return "";
@@ -103,7 +119,7 @@ const timelineTextClass = (state: string) => {
 ---
 
 <Layout>
-	<main class="app-shell px-4 pb-32 pt-8 sm:px-6 lg:px-8" data-price-per-carton={PRICE_PER_CARTON}>
+	<main class="app-shell px-4 pb-32 pt-8 sm:px-6 lg:px-8">
 		<div class="mx-auto flex max-w-5xl flex-col gap-6">
 			<header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 				<div>
@@ -186,7 +202,8 @@ const timelineTextClass = (state: string) => {
 							{canEdit && (
 								<div class="mt-4 rounded-2xl border border-[#28e08f]/40 bg-[#ecfff6] p-4 text-sm text-slate-700">
 									<p class="text-xs font-black uppercase tracking-[0.14em] text-[#116b4c]">Précommande ouverte: modification possible</p>
-									<div class="mt-3 flex flex-wrap items-center gap-3" data-order-row data-order-id={order.id}>
+									<p class="mt-2 text-xs font-bold text-slate-500">Tarif appliqué à la modification : {PRICE_PER_CARTON} EUR par carton, avant code promo.</p>
+									<div class="mt-3 flex flex-wrap items-center gap-3" data-order-row data-order-id={order.id} data-promo={JSON.stringify(orderPromos.get(order.promo_code_id) ?? null)}>
 										<button type="button" class="flex h-9 w-9 items-center justify-center rounded-full bg-white text-lg font-black text-[#101820] shadow-sm" data-carton-dec>-</button>
 										<span class="min-w-[2.5rem] text-center text-base font-black text-[#101820]" data-carton-value>{order.cartons}</span>
 										<button type="button" class="flex h-9 w-9 items-center justify-center rounded-full bg-white text-lg font-black text-[#101820] shadow-sm" data-carton-inc>+</button>
@@ -204,13 +221,13 @@ const timelineTextClass = (state: string) => {
 	</main>
 	<DashboardNav />
 
-	<script type="module">
+	<script>
+		import { computeOrderPricing } from "../lib/orderPricing";
+		import type { PromoShape } from "../lib/orderPricing";
+
 		(() => {
 			const rows = document.querySelectorAll("[data-order-row]");
 			const proofRows = document.querySelectorAll("[data-proof-row]");
-			const root = document.querySelector("[data-price-per-carton]");
-			const pricePerCarton = Number(root?.getAttribute("data-price-per-carton") || 0);
-			const calcTotal = (cartons) => Math.round(cartons * pricePerCarton);
 			rows.forEach((row) => {
 				const orderId = row.getAttribute("data-order-id");
 				const decBtn = row.querySelector("[data-carton-dec]");
@@ -220,8 +237,10 @@ const timelineTextClass = (state: string) => {
 				const totalEl = row.querySelector("[data-carton-total]");
 				if (!orderId || !decBtn || !incBtn || !saveBtn || !valueEl) return;
 				let cartons = Number(valueEl.textContent || 0) || 1;
+				let promo: PromoShape | null = JSON.parse(row.getAttribute("data-promo") || "null");
 				const updateTotal = () => {
-					if (totalEl) totalEl.textContent = `Nouveau total: ${calcTotal(cartons)} EUR`;
+					const { total } = computeOrderPricing({ cartons, promo });
+					if (totalEl) totalEl.textContent = `Nouveau total: ${total} EUR`;
 				};
 				updateTotal();
 				decBtn.addEventListener("click", () => {
@@ -250,6 +269,8 @@ const timelineTextClass = (state: string) => {
 						saveBtn.textContent = originalText || "Mettre à jour";
 						return;
 					}
+					// The server removes the promo when the saved quantity falls below its minimum.
+					if (promo && cartons < Number(promo.min_cartons || 1)) promo = null;
 					saveBtn.disabled = false;
 					saveBtn.textContent = "Mis à jour";
 					setTimeout(() => {

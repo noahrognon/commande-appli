@@ -1,4 +1,4 @@
-export const PRICE_PER_CARTON = 85;
+export const PRICE_PER_CARTON = 95;
 export const COST_PER_CARTON = 56;
 export const COMPETITOR_PRICE_PER_CARTON = 150;
 export const SAVINGS_PER_CARTON = Math.max(
@@ -11,6 +11,7 @@ export type PromoShape = {
 	code?: string;
 	type?: string | null;
 	value?: number | null;
+	min_cartons?: number | null;
 };
 
 export const computeOrderPricing = (params: {
@@ -22,7 +23,7 @@ export const computeOrderPricing = (params: {
 	const baseTotal = subtotal;
 
 	let promoDiscountAmount = 0;
-	const promo = params.promo;
+	const promo = cartons >= Number(params.promo?.min_cartons || 1) ? params.promo : null;
 	if (promo?.type === "percent") {
 		promoDiscountAmount = baseTotal * (Number(promo.value || 0) / 100);
 	} else if (promo?.type === "fixed") {
@@ -34,7 +35,8 @@ export const computeOrderPricing = (params: {
 
 	return {
 		subtotal: Math.round(subtotal),
-		promoDiscountAmount: Math.round(promoDiscountAmount),
+		// Keep the displayed and recorded discount consistent with the rounded total.
+		promoDiscountAmount: Math.round(subtotal) - total,
 		total
 	};
 };

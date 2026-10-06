@@ -24,7 +24,7 @@ export const POST: APIRoute = async ({ request }) => {
 		if (!code) {
 			return new Response(JSON.stringify({ success: false, error: "Code promo manquant." }), { status: 400 });
 		}
-		if (cartons < 1) {
+		if (!Number.isSafeInteger(cartons) || cartons < 1) {
 			return new Response(JSON.stringify({ success: false, error: "Quantite invalide." }), { status: 400 });
 		}
 

@@ -82,7 +82,7 @@ export const POST: APIRoute = async ({ request }) => {
 		if (payment_method !== "virement") {
 			payment_proof_path = "";
 		}
-		if (cartons < 1) {
+		if (!Number.isSafeInteger(cartons) || cartons < 1) {
 			return new Response(JSON.stringify({ success: false, error: "Au moins 1 carton requis." }), { status: 400 });
 		}
 

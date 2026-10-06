@@ -86,7 +86,6 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 				data-preorder-id={preorder?.id || ""}
 				data-preorder-end={preorder?.end_date || ""}
 				data-project-ref={projectRef}
-				data-price-per-carton={PRICE_PER_CARTON}
 			>
 				<input type="hidden" name="preorder_id" value={preorder?.id || ""} />
 
@@ -271,7 +270,9 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 		{JSON.stringify(repeatOrderPrefill)}
 	</script>
 
-	<script type="module">
+	<script>
+		import { computeOrderPricing } from "../lib/orderPricing";
+
 		(() => {
 			console.log("SCRIPT CLIENT OK");
 			const messagesEl = document.getElementById("form-messages");
@@ -287,9 +288,6 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 			const projectRef = form.getAttribute("data-project-ref") || "";
 			const repeatOrderDataEl = document.getElementById("repeat-order-data");
 
-			const pricePerCarton = Number(
-				form.getAttribute("data-price-per-carton") || 0,
-			);
 			let cartons = 1;
 			let appliedPromo = null;
 			const flavorQuantities = new Map();
@@ -372,23 +370,16 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 			}
 
 			const renderTotals = () => {
-				const subtotal = cartons * pricePerCarton;
-				const baseTotal = subtotal;
-				let promoAmount = 0;
-				if (appliedPromo) {
-					if (cartons < Number(appliedPromo.min_cartons || 1)) {
-						appliedPromo = null;
-						if (promoFeedback) {
-							promoFeedback.textContent = "Le code promo a ete retire car la quantite minimale n'est plus atteinte.";
-						}
-					} else if (appliedPromo.type === "percent") {
-						promoAmount = baseTotal * (Number(appliedPromo.value || 0) / 100);
-					} else if (appliedPromo.type === "fixed") {
-						promoAmount = Number(appliedPromo.value || 0);
+				if (appliedPromo && cartons < Number(appliedPromo.min_cartons || 1)) {
+					appliedPromo = null;
+					if (promoFeedback) {
+						promoFeedback.textContent = "Le code promo a ete retire car la quantite minimale n'est plus atteinte.";
 					}
 				}
-				promoAmount = Math.max(0, Math.min(baseTotal, promoAmount));
-				const total = Math.max(0, Math.round(baseTotal - promoAmount));
+				const { subtotal, promoDiscountAmount, total } = computeOrderPricing({
+					cartons,
+					promo: appliedPromo
+				});
 
 				if (cartEl) cartEl.textContent = String(cartons);
 				if (subtotalEl) subtotalEl.textContent = `${subtotal} EUR`;
@@ -401,9 +392,9 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 					promoLabelEl.textContent = appliedPromo ? `Code ${appliedPromo.code}` : "Code promo";
 				}
 				if (promoAmountEl) {
-					promoAmountEl.textContent = `-${Math.round(promoAmount)} EUR`;
+					promoAmountEl.textContent = `-${promoDiscountAmount} EUR`;
 				}
-				return { subtotal, promoAmount: Math.round(promoAmount), total };
+				return { subtotal, promoAmount: promoDiscountAmount, total };
 			};
 
 			const setMessage = (text, type = "error") => {
@@ -679,5 +670,4 @@ if (repeatOrderId && SUPABASE_SERVICE_ROLE_KEY) {
 		})();
 	</script>
 </Layout>
-
 

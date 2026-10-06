@@ -49,7 +49,7 @@ export const POST: APIRoute = async ({ request }) => {
 		if (!order_id) {
 			return new Response(JSON.stringify({ success: false, error: "Commande manquante." }), { status: 400 });
 		}
-		if (cartons < 1) {
+		if (!Number.isSafeInteger(cartons) || cartons < 1) {
 			return new Response(JSON.stringify({ success: false, error: "Au moins 1 carton requis." }), { status: 400 });
 		}
 
