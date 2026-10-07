@@ -1,5 +1,5 @@
 export const PRICE_PER_CARTON = 95;
-export const COST_PER_CARTON = 56;
+export const COST_PER_CARTON = 62;
 export const COMPETITOR_PRICE_PER_CARTON = 150;
 export const SAVINGS_PER_CARTON = Math.max(
 	0,
